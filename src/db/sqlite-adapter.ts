@@ -28,7 +28,7 @@ export type SqliteBackend = 'native' | 'wasm';
  * stderr banner and the MCP status formatter.
  */
 export const WASM_FALLBACK_FIX_RECIPE =
-  '`xcode-select --install` (macOS) or `apt install build-essential` (Debian/Ubuntu), ' +
+  '`xcode-select --install` (macOS), `apt install build-essential` (Debian/Ubuntu), or `pacman -S base-devel` (Arch), ' +
   'then `npm rebuild better-sqlite3`, or `npm install better-sqlite3 --save` to force-include it.';
 
 /**
@@ -55,6 +55,7 @@ export function buildWasmFallbackBanner(nativeError?: string): string {
     'Fix on Linux:',
     '  sudo apt install build-essential python3 make    # Debian/Ubuntu',
     '  # or: sudo yum groupinstall "Development Tools"  # RHEL/Fedora',
+    '  # or: sudo pacman -S base-devel python           # Arch Linux',
     '  npm rebuild better-sqlite3',
     '',
     'Or force-include as a hard dependency on any platform:',

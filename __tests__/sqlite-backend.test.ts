@@ -23,6 +23,7 @@ describe('buildWasmFallbackBanner — fix-recipe content', () => {
     expect(banner).toContain('5-10x slower');
     expect(banner).toContain('xcode-select --install');
     expect(banner).toContain('apt install build-essential');
+    expect(banner).toContain('pacman -S base-devel');
     expect(banner).toContain('npm rebuild better-sqlite3');
     expect(banner).toContain('npm install better-sqlite3 --save');
     expect(banner).toContain('codegraph status');
@@ -44,8 +45,9 @@ describe('buildWasmFallbackBanner — fix-recipe content', () => {
 });
 
 describe('WASM_FALLBACK_FIX_RECIPE — single source of truth', () => {
-  it('mentions the three recovery commands', () => {
+  it('mentions the recovery commands', () => {
     expect(WASM_FALLBACK_FIX_RECIPE).toContain('xcode-select --install');
+    expect(WASM_FALLBACK_FIX_RECIPE).toContain('pacman -S base-devel');
     expect(WASM_FALLBACK_FIX_RECIPE).toContain('npm rebuild better-sqlite3');
     expect(WASM_FALLBACK_FIX_RECIPE).toContain(
       'npm install better-sqlite3 --save'

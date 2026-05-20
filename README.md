@@ -479,6 +479,9 @@ The `.codegraph/config.json` file controls indexing:
   # Linux (RHEL / Fedora)
   sudo yum groupinstall "Development Tools"
 
+  # Linux (Arch / Arch-based)
+  sudo pacman -S base-devel python
+
   # Then rebuild on any platform:
   npm rebuild better-sqlite3
 

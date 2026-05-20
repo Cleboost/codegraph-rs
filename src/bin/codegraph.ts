@@ -26,6 +26,7 @@ import { createShimmerProgress } from '../ui/shimmer-progress';
 import { getGlyphs } from '../ui/glyphs';
 
 import { buildNode25BlockBanner } from './node-version-check';
+import { spawnSync } from 'child_process';
 
 // Lazy-load heavy modules (CodeGraph, runInstaller) to keep CLI startup fast.
 async function loadCodeGraph(): Promise<typeof import('../index')> {
@@ -52,16 +53,37 @@ const importESM = new Function('specifier', 'return import(specifier)') as
 // grammars (see #54, #81, #140). The previous behaviour was a soft
 // console.warn that scrolls off-screen before the OOM crash 30 seconds
 // later, leading to a steady stream of "what is this OOM" reports.
-// Hard-exit before any WASM work; allow override via env var for users
-// who patched V8 themselves or want to test a future fix.
+//
+// To make CodeGraph fully compatible with Node >= 25 without requiring
+// users to downgrade, we automatically respawn the process with V8 flags
+// that disable the problematic turboshaft WASM compilation pipeline.
+// We skip this check entirely when running under Bun, as WebKit's
+// JavaScriptCore (JSC) does not suffer from this V8 bug.
 const nodeVersion = process.versions.node;
 const nodeMajor = parseInt(nodeVersion.split('.')[0] ?? '0', 10);
-if (nodeMajor >= 25) {
-  process.stderr.write(buildNode25BlockBanner(nodeVersion) + '\n');
-  if (!process.env.CODEGRAPH_ALLOW_UNSAFE_NODE) {
-    process.exit(1);
+const isBun = 'bun' in process.versions;
+
+if (nodeMajor >= 25 && !isBun) {
+  const hasTurboshaftDisableFlag = process.execArgv.some(arg => arg.includes('--no-turboshaft'));
+  if (!hasTurboshaftDisableFlag && !process.env.CODEGRAPH_ALLOW_UNSAFE_NODE) {
+    try {
+      const scriptPath = process.argv[1];
+      if (!scriptPath) throw new Error('No script path');
+
+      const args = [
+        '--no-turboshaft',
+        ...process.execArgv,
+        scriptPath,
+        ...process.argv.slice(2)
+      ];
+      
+      const result = spawnSync(process.execPath, args, { stdio: 'inherit' });
+      process.exit(result.status ?? 0);
+    } catch (err) {
+      process.stderr.write(buildNode25BlockBanner(nodeVersion) + '\n');
+      process.exit(1);
+    }
   }
-  // Override active — banner shown for visibility, continuing.
 }
 
 // Check if running with no arguments - run installer

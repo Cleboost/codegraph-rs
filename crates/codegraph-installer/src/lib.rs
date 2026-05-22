@@ -1,7 +1,6 @@
 //! Multi-agent installer. One target per file in `targets/`.
 
 pub mod targets;
-pub mod bin_install;
 
 use anyhow::Result;
 use camino::Utf8PathBuf;

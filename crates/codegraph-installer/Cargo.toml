@@ -18,5 +18,3 @@ tracing = { workspace = true }
 [dev-dependencies]
 tempfile = "3"
 
-[target.'cfg(windows)'.dependencies]
-winreg = "0.52"

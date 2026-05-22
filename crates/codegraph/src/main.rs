@@ -7,6 +7,7 @@ use codegraph_mcp::McpServer;
 use std::sync::Arc;
 
 mod watcher;
+mod bin_install;
 
 const CODEGRAPH_DIR: &str = ".codegraph";
 const DB_FILE: &str = "db.sqlite";
@@ -97,7 +98,7 @@ fn main() -> Result<()> {
 }
 
 fn cmd_install(root: &Utf8Path) -> Result<()> {
-    use codegraph_installer::{registry, InstallOpts, InstallReport, bin_install};
+    use codegraph_installer::{registry, InstallOpts, InstallReport};
     
     // Self-install the binary first
     let final_bin = bin_install::ensure_installed()?;

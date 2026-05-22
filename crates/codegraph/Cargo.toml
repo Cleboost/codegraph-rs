@@ -28,3 +28,6 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 camino = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"

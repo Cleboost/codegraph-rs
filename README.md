@@ -23,35 +23,75 @@ Agents that consult the graph instead of grepping the filesystem make
 - **Local.** Index lives in `.codegraph/db.sqlite` next to your code. Nothing
   leaves the machine.
 - **Multi-agent.** A single `codegraph install` configures Claude Code, Cursor,
-  Codex, opencode and Hermes in one go.
+  Codex, opencode, Hermes and Antigravity CLI in one go.
 - **Live.** Built-in file watcher keeps the index in sync while the MCP server
   serves your agent.
 
 ## Install
 
-### From a release binary (recommended)
+<details>
+<summary><strong>Automatic (recommended)</strong></summary>
+
+**Linux / macOS**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/cleboost/codegraph/main/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/Cleboost/codegraph-rs/main/scripts/install.sh | sh
 ```
 
-Drops `codegraph` into `~/.local/bin` (override with `CODEGRAPH_INSTALL_DIR`).
-Linux x86_64/aarch64, macOS x86_64/arm64, Windows x86_64 supported.
+Drops `codegraph` into `~/.local/bin`. Override with `CODEGRAPH_INSTALL_DIR`.
 
-### From Cargo
+**Windows (PowerShell)**
 
-```sh
-cargo install --git https://github.com/cleboost/codegraph codegraph
+```powershell
+irm https://raw.githubusercontent.com/Cleboost/codegraph-rs/main/scripts/install.ps1 | iex
 ```
 
-### From source
+Installs to `%LOCALAPPDATA%\codegraph\bin` and adds it to the user PATH.
+
+**Arch Linux (AUR)**
 
 ```sh
-git clone https://github.com/cleboost/codegraph
-cd codegraph
+yay -S codegraph-rs-bin
+```
+
+</details>
+
+<details>
+<summary><strong>Manual</strong></summary>
+
+1. Download the archive for your platform from the [latest release](https://github.com/Cleboost/codegraph-rs/releases/latest):
+
+   | Platform | File |
+   |---|---|
+   | Linux x86_64 | `codegraph-x86_64-unknown-linux-musl.tar.gz` |
+   | Linux aarch64 | `codegraph-aarch64-unknown-linux-gnu.tar.gz` |
+   | macOS x86_64 | `codegraph-x86_64-apple-darwin.tar.gz` |
+   | macOS arm64 | `codegraph-aarch64-apple-darwin.tar.gz` |
+   | Windows x86_64 | `codegraph-x86_64-pc-windows-msvc.zip` |
+
+2. Extract and place the `codegraph` binary somewhere on your `PATH`.
+
+</details>
+
+<details>
+<summary><strong>From source</strong></summary>
+
+Requires Rust stable (≥ 1.80).
+
+```sh
+git clone https://github.com/Cleboost/codegraph-rs
+cd codegraph-rs
 cargo build --release -p codegraph
 # binary at target/release/codegraph
 ```
+
+Or via Cargo directly:
+
+```sh
+cargo install --git https://github.com/Cleboost/codegraph-rs codegraph
+```
+
+</details>
 
 ## Quick start
 

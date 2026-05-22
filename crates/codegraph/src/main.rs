@@ -59,6 +59,8 @@ enum Cmd {
         #[arg(long)]
         mcp: bool,
     },
+    /// Configure agents (alias for the agent setup step in `init`).
+    Install,
 }
 
 fn main() -> Result<()> {
@@ -92,6 +94,7 @@ fn main() -> Result<()> {
             source,
         } => cmd_context(&root, &target, depth, source),
         Cmd::Serve { mcp } => cmd_serve(&root, mcp),
+        Cmd::Install => cmd_agents(&root),
     }
 }
 
@@ -107,10 +110,6 @@ fn ensure_initialized(root: &Utf8Path) -> Result<()> {
 }
 
 fn cmd_init(root: &Utf8Path, do_index: bool) -> Result<()> {
-    use codegraph_installer::{project_registry, DetectStatus, InstallOpts, InstallReport};
-    use console::style;
-    use dialoguer::{theme::ColorfulTheme, MultiSelect};
-
     let dir = root.join(CODEGRAPH_DIR);
     std::fs::create_dir_all(&dir)?;
     std::fs::write(dir.join(".gitignore"), "*\n")?;
@@ -126,7 +125,15 @@ fn cmd_init(root: &Utf8Path, do_index: bool) -> Result<()> {
         );
     }
 
-    // Agent setup
+    eprintln!();
+    cmd_agents(root)
+}
+
+fn cmd_agents(root: &Utf8Path) -> Result<()> {
+    use codegraph_installer::{project_registry, DetectStatus, InstallOpts, InstallReport};
+    use console::style;
+    use dialoguer::{theme::ColorfulTheme, MultiSelect};
+
     let bin = std::env::current_exe()?;
     let bin = Utf8PathBuf::from_path_buf(bin)
         .map_err(|p| anyhow!("non-UTF8 bin path: {}", p.display()))?;
@@ -161,7 +168,6 @@ fn cmd_init(root: &Utf8Path, do_index: bool) -> Result<()> {
         .map(|(i, _)| i)
         .collect();
 
-    eprintln!();
     if !already_indices.is_empty() {
         eprintln!("{}", style("Already configured:").blue());
         for i in &already_indices {

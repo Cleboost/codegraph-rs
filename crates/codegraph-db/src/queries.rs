@@ -16,29 +16,25 @@ pub(crate) fn schema_version(c: &Connection) -> Result<u32> {
 }
 
 pub(crate) fn upsert_file(tx: &Transaction, f: &FileRow) -> Result<i64> {
-    tx.execute(
-        "INSERT INTO files(path, language, sha256, size, mtime, indexed_at)
-         VALUES(?1, ?2, ?3, ?4, ?5, ?6)
-         ON CONFLICT(path) DO UPDATE SET
-            language=excluded.language,
-            sha256=excluded.sha256,
-            size=excluded.size,
-            mtime=excluded.mtime,
-            indexed_at=excluded.indexed_at",
-        params![
-            f.path.as_str(),
-            f.language,
-            f.sha256,
-            f.size as i64,
-            f.mtime,
-            f.indexed_at
-        ],
-    )
-    .map_err(db_err)?;
     let id: i64 = tx
         .query_row(
-            "SELECT id FROM files WHERE path=?1",
-            [f.path.as_str()],
+            "INSERT INTO files(path, language, sha256, size, mtime, indexed_at)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT(path) DO UPDATE SET
+                language=excluded.language,
+                sha256=excluded.sha256,
+                size=excluded.size,
+                mtime=excluded.mtime,
+                indexed_at=excluded.indexed_at
+             RETURNING id",
+            params![
+                f.path.as_str(),
+                f.language,
+                f.sha256,
+                f.size as i64,
+                f.mtime,
+                f.indexed_at
+            ],
             |r| r.get(0),
         )
         .map_err(db_err)?;
@@ -55,9 +51,19 @@ pub(crate) fn file_by_path(c: &Connection, path: &str) -> Result<Option<FileRow>
     .map_err(db_err)
 }
 
+pub(crate) fn file_by_id(c: &Connection, id: i64) -> Result<Option<FileRow>> {
+    c.query_row(
+        "SELECT id, path, language, sha256, size, mtime, indexed_at FROM files WHERE id=?1",
+        [id],
+        row_to_file,
+    )
+    .optional()
+    .map_err(db_err)
+}
+
 pub(crate) fn files_under(c: &Connection, prefix: &str) -> Result<Vec<FileRow>> {
     let mut s = c
-        .prepare(
+        .prepare_cached(
             "SELECT id, path, language, sha256, size, mtime, indexed_at
              FROM files WHERE path LIKE ?1 ORDER BY path",
         )
@@ -137,7 +143,7 @@ pub(crate) fn node_by_id(c: &Connection, id: NodeId) -> Result<Option<Node>> {
 
 pub(crate) fn nodes_by_name(c: &Connection, name: &str) -> Result<Vec<Node>> {
     let mut s = c
-        .prepare(
+        .prepare_cached(
             "SELECT n.id, n.kind, n.name, n.qualified_name, f.path, n.start_line, n.end_line,
                     n.signature, n.docstring, n.language
              FROM nodes n JOIN files f ON f.id = n.file_id
@@ -168,7 +174,7 @@ pub(crate) fn search_fts(c: &Connection, q: &str, limit: u32) -> Result<Vec<Node
                WHERE nodes_fts MATCH ?1
                ORDER BY rank
                LIMIT ?2";
-    let mut s = c.prepare(sql).map_err(db_err)?;
+    let mut s = c.prepare_cached(sql).map_err(db_err)?;
     let it = s
         .query_map(params![escaped, limit as i64], row_to_node)
         .map_err(db_err)?;
@@ -183,7 +189,7 @@ pub(crate) fn edges_from(c: &Connection, id: NodeId, kind: EdgeKind) -> Result<V
     let sql = "SELECT e.from_id, e.to_id, e.kind, f.path, e.line
                FROM edges e LEFT JOIN files f ON f.id = e.file_id
                WHERE e.from_id = ?1 AND e.kind = ?2";
-    let mut s = c.prepare(sql).map_err(db_err)?;
+    let mut s = c.prepare_cached(sql).map_err(db_err)?;
     let it = s
         .query_map(params![id, ekind_str(kind)], row_to_edge)
         .map_err(db_err)?;
@@ -198,7 +204,7 @@ pub(crate) fn edges_to(c: &Connection, id: NodeId, kind: EdgeKind) -> Result<Vec
     let sql = "SELECT e.from_id, e.to_id, e.kind, f.path, e.line
                FROM edges e LEFT JOIN files f ON f.id = e.file_id
                WHERE e.to_id = ?1 AND e.kind = ?2";
-    let mut s = c.prepare(sql).map_err(db_err)?;
+    let mut s = c.prepare_cached(sql).map_err(db_err)?;
     let it = s
         .query_map(params![id, ekind_str(kind)], row_to_edge)
         .map_err(db_err)?;

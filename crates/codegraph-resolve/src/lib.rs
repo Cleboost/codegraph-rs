@@ -1,18 +1,17 @@
 //! Reference resolution: name-match pending calls into actual `calls` edges.
 //!
-//! MVP: in-process resolver invoked by the orchestrator after a batch.
 //! Strategy: for each PendingCall { from, target_name, line }, look up nodes
-//! named `target_name` of kind function|method. If exactly one match in the
-//! same file, link directly. If multiple, link to all (cheap recall over
-//! precision).
+//! named `target_name` of kind function|method, then pick the closest match
+//! by proximity score (same file > same directory > anywhere).
 
 pub mod frameworks;
 pub mod imports;
 pub mod name_match;
 
-use codegraph_core::{EdgeKind, NodeId, Result};
+use codegraph_core::{Node, EdgeKind, NodeId, Result};
 use codegraph_db::{Db, EdgeDraft};
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 /// Input from an extractor pass: ready-to-resolve call sites.
 #[derive(Debug, Clone)]
@@ -36,6 +35,20 @@ impl<'a> Resolver<'a> {
         if pending.is_empty() {
             return Ok(0);
         }
+
+        // Build file_id → (path, dir) cache to avoid per-site DB lookups.
+        let mut file_cache: HashMap<i64, Option<(String, PathBuf)>> = HashMap::new();
+        for p in pending {
+            file_cache.entry(p.file_id).or_insert_with(|| {
+                self.db.file_by_id(p.file_id).ok().flatten().and_then(|f| {
+                    let dir = std::path::Path::new(f.path.as_str())
+                        .parent()
+                        .map(|d| d.to_path_buf())?;
+                    Some((f.path.to_string(), dir))
+                })
+            });
+        }
+
         // Group by target_name to batch lookups.
         let mut by_name: HashMap<&str, Vec<&PendingCallRow>> = HashMap::new();
         for p in pending {
@@ -63,24 +76,19 @@ impl<'a> Resolver<'a> {
             }
 
             for site in sites {
-                // Prefer same-file match. If none, link all callable (recall over precision).
-                let same_file: Vec<_> = callable
+                // Score each candidate by proximity to the call site.
+                // 3 = same file, 2 = same directory, 1 = anywhere else.
+                // Use highest-scoring candidates only (precision > recall for common names).
+                let caller_info = file_cache.get(&site.file_id).and_then(|v| v.as_ref());
+                let best_score = callable
                     .iter()
-                    .filter(|n| {
-                        self.db
-                            .file_by_path(n.file.as_str())
-                            .ok()
-                            .flatten()
-                            .and_then(|f| f.id)
-                            .map(|id| id == site.file_id)
-                            .unwrap_or(false)
-                    })
+                    .map(|n| proximity_score(n, caller_info))
+                    .max()
+                    .unwrap_or(1);
+                let targets: Vec<_> = callable
+                    .iter()
+                    .filter(|n| proximity_score(n, caller_info) == best_score)
                     .collect();
-                let targets: Vec<_> = if !same_file.is_empty() {
-                    same_file.into_iter().collect()
-                } else {
-                    callable.iter().collect()
-                };
                 for t in targets {
                     edges.push(EdgeDraft {
                         from_id: site.from_id,
@@ -96,5 +104,22 @@ impl<'a> Resolver<'a> {
         let n = edges.len();
         self.db.insert_edges(&edges)?;
         Ok(n)
+    }
+}
+
+/// Score a candidate node by proximity to the caller.
+/// 3 = same file, 2 = same directory, 1 = elsewhere.
+fn proximity_score(candidate: &Node, caller_info: Option<&(String, PathBuf)>) -> u8 {
+    let Some((caller_path, caller_dir)) = caller_info else {
+        return 1;
+    };
+    if candidate.file.as_str() == caller_path.as_str() {
+        return 3;
+    }
+    let candidate_dir = std::path::Path::new(candidate.file.as_str()).parent();
+    if candidate_dir == Some(caller_dir.as_path()) {
+        2
+    } else {
+        1
     }
 }

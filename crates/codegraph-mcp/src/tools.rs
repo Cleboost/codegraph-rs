@@ -1,6 +1,6 @@
 use codegraph_context::{build, ContextRequest, Format};
 use codegraph_db::Db;
-use codegraph_graph::Traversal;
+use codegraph_graph::{ReferencesReport, Traversal};
 use serde_json::{json, Value};
 
 pub fn tool_definitions() -> Vec<Value> {
@@ -54,6 +54,13 @@ pub fn tool_definitions() -> Vec<Value> {
                 "include_source": { "type": "boolean", "default": false },
                 "limit": { "type": "integer", "default": 5 }
             }, "required": ["query"] }),
+        ),
+        tool(
+            "codegraph_references",
+            "All nodes that reference this node (calls, imports, extends, implements, type_of, instantiates, …), grouped by relationship kind.",
+            json!({ "type": "object", "properties": {
+                "node": { "type": "integer", "description": "Node id to find references for" }
+            }, "required": ["node"] }),
         ),
         tool(
             "codegraph_files",
@@ -121,6 +128,12 @@ pub fn dispatch(db: &Db, name: &str, args: Value) -> anyhow::Result<String> {
                 format: Format::Markdown,
             };
             Ok(build(db, &req)?)
+        }
+        "codegraph_references" => {
+            let id = arg_i64(&args, "node")?;
+            let t = Traversal::new(db);
+            let report: ReferencesReport = t.references(id)?;
+            Ok(serde_json::to_string_pretty(&report)?)
         }
         "codegraph_files" => {
             let prefix = args.get("path").and_then(|v| v.as_str()).unwrap_or("");

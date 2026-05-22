@@ -137,6 +137,11 @@ impl Db {
         queries::file_by_path(&c, path)
     }
 
+    pub fn file_by_id(&self, id: i64) -> Result<Option<FileRow>> {
+        let c = self.conn.lock();
+        queries::file_by_id(&c, id)
+    }
+
     pub fn stats(&self) -> Result<DbStats> {
         let c = self.conn.lock();
         queries::stats(&c)

@@ -4,6 +4,7 @@ use codegraph_core::{Node, Result};
 use codegraph_db::Db;
 use codegraph_graph::Traversal;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt::Write;
 
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
@@ -58,14 +59,35 @@ pub fn build(db: &Db, req: &ContextRequest) -> Result<String> {
 }
 
 pub fn build_response(db: &Db, req: &ContextRequest) -> Result<ContextResponse> {
-    let mut hits = Vec::new();
     let candidates = db.search_nodes(&req.query, req.limit)?;
     let trav = Traversal::new(db);
+
+    // Pre-load each unique file once when source is requested.
+    let file_cache: HashMap<String, Vec<String>> = if req.include_source {
+        let mut cache = HashMap::new();
+        for n in &candidates {
+            let key = n.file.as_str().to_owned();
+            if !cache.contains_key(&key) {
+                if let Ok(text) = std::fs::read_to_string(n.file.as_std_path()) {
+                    cache.insert(key, text.lines().map(str::to_owned).collect());
+                }
+            }
+        }
+        cache
+    } else {
+        HashMap::new()
+    };
+
+    let mut hits = Vec::new();
     for n in candidates {
         let callers = trav.callers(n.id, req.depth)?.nodes;
         let callees = trav.callees(n.id, req.depth)?.nodes;
         let source = if req.include_source {
-            read_source_slice(&n)
+            file_cache.get(n.file.as_str()).map(|lines| {
+                let start = n.start_line.saturating_sub(1) as usize;
+                let end = (n.end_line as usize).min(lines.len());
+                lines[start..end].join("\n")
+            })
         } else {
             None
         };
@@ -80,19 +102,6 @@ pub fn build_response(db: &Db, req: &ContextRequest) -> Result<ContextResponse> 
         query: req.query.clone(),
         hits,
     })
-}
-
-fn read_source_slice(n: &Node) -> Option<String> {
-    let text = std::fs::read_to_string(n.file.as_std_path()).ok()?;
-    let start = n.start_line.saturating_sub(1) as usize;
-    let end = (n.end_line as usize).min(text.lines().count());
-    Some(
-        text.lines()
-            .skip(start)
-            .take(end - start)
-            .collect::<Vec<_>>()
-            .join("\n"),
-    )
 }
 
 fn render_markdown(resp: &ContextResponse) -> String {

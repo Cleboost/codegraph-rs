@@ -24,6 +24,36 @@ impl<'a> Traversal<'a> {
         self.traverse(id, depth, &[EdgeKind::Calls], true)
     }
 
+    /// All nodes that reference this node (depth 1, all non-containment edge kinds).
+    pub fn references(&self, id: NodeId) -> Result<ReferencesReport> {
+        let kinds = [
+            EdgeKind::Calls,
+            EdgeKind::Imports,
+            EdgeKind::Extends,
+            EdgeKind::Implements,
+            EdgeKind::References,
+            EdgeKind::TypeOf,
+            EdgeKind::Instantiates,
+            EdgeKind::Overrides,
+            EdgeKind::Decorates,
+        ];
+        let root = self
+            .db
+            .node_by_id(id)?
+            .ok_or_else(|| codegraph_core::Error::Invalid(format!("node {id} not found")))?;
+        let edges = self.db.edges_to(id, &kinds)?;
+        let mut by_kind: HashMap<String, Vec<Node>> = HashMap::new();
+        for e in &edges {
+            if let Some(n) = self.db.node_by_id(e.from)? {
+                by_kind
+                    .entry(e.kind.as_str().into())
+                    .or_default()
+                    .push(n);
+            }
+        }
+        Ok(ReferencesReport { root, by_kind })
+    }
+
     /// Forward impact across calls/references/imports/extends/implements.
     pub fn impact_radius(&self, id: NodeId, max_depth: u32) -> Result<ImpactReport> {
         let kinds = [
@@ -117,6 +147,13 @@ pub struct TraverseHits {
     pub depths: Vec<u32>,
     pub edges: Vec<Edge>,
     pub truncated: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReferencesReport {
+    pub root: Node,
+    /// Inbound references grouped by edge kind (calls, imports, extends, …).
+    pub by_kind: HashMap<String, Vec<Node>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

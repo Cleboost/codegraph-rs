@@ -97,7 +97,10 @@ fn main() -> Result<()> {
 }
 
 fn cmd_install(root: &Utf8Path) -> Result<()> {
-    use codegraph_installer::{registry, InstallOpts, InstallReport};
+    use codegraph_installer::{DetectStatus, registry, InstallOpts, InstallReport};
+    use console::style;
+    use dialoguer::{MultiSelect, theme::ColorfulTheme};
+
     let bin = std::env::current_exe()?;
     let bin = Utf8PathBuf::from_path_buf(bin)
         .map_err(|p| anyhow!("non-UTF8 bin path: {}", p.display()))?;
@@ -106,18 +109,82 @@ fn cmd_install(root: &Utf8Path) -> Result<()> {
         global: false,
         binary_path: bin,
     };
-    for target in registry() {
-        let status = target.detect(&opts);
-        eprintln!("[{}] detected: {:?}", target.id(), status);
+
+    let all_targets = registry();
+    let statuses: Vec<DetectStatus> = all_targets.iter().map(|t| t.detect(&opts)).collect();
+
+    let found_indices: Vec<usize> = statuses
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| matches!(s, DetectStatus::Found))
+        .map(|(i, _)| i)
+        .collect();
+
+    let already_indices: Vec<usize> = statuses
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| matches!(s, DetectStatus::AlreadyConfigured))
+        .map(|(i, _)| i)
+        .collect();
+
+    let not_found_indices: Vec<usize> = statuses
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| matches!(s, DetectStatus::NotFound))
+        .map(|(i, _)| i)
+        .collect();
+
+    if !already_indices.is_empty() {
+        eprintln!("{}", style("Already configured:").blue());
+        for i in &already_indices {
+            eprintln!("  {}", style(all_targets[*i].label()).blue());
+        }
+        eprintln!();
+    }
+
+    if !not_found_indices.is_empty() {
+        eprintln!("{}", style("Not detected:").dim());
+        for i in &not_found_indices {
+            eprintln!("  {}", style(all_targets[*i].label()).dim());
+        }
+        eprintln!();
+    }
+
+    if found_indices.is_empty() {
+        eprintln!("{}", style("No new agents to configure.").yellow());
+        return Ok(());
+    }
+
+    let labels: Vec<String> = found_indices
+        .iter()
+        .map(|&i| all_targets[i].label().to_string())
+        .collect();
+
+    let defaults = vec![false; found_indices.len()];
+
+    let chosen = MultiSelect::with_theme(&ColorfulTheme::default())
+        .with_prompt("Select agents to configure (space = toggle, enter = confirm)")
+        .items(&labels)
+        .defaults(&defaults)
+        .interact()?;
+
+    if chosen.is_empty() {
+        eprintln!("nothing selected, aborted");
+        return Ok(());
+    }
+
+    eprintln!();
+    for pos in chosen {
+        let target = &all_targets[found_indices[pos]];
         let report = target.install(&opts)?;
         match report {
             InstallReport::Installed(p) | InstallReport::Updated(p) => {
-                for f in p {
-                    eprintln!("  wrote {}", f);
+                for f in &p {
+                    eprintln!("[{}] wrote {}", target.id(), f);
                 }
             }
-            InstallReport::Unchanged => eprintln!("  unchanged"),
-            InstallReport::Skipped(r) => eprintln!("  skipped: {}", r),
+            InstallReport::Unchanged => eprintln!("[{}] unchanged", target.id()),
+            InstallReport::Skipped(r) => eprintln!("[{}] skipped: {}", target.id(), r),
         }
     }
     Ok(())

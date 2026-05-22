@@ -48,6 +48,7 @@ pub fn registry() -> Vec<Arc<dyn AgentTarget>> {
         Arc::new(targets::codex::CodexTarget),
         Arc::new(targets::opencode::OpencodeTarget),
         Arc::new(targets::hermes::HermesTarget),
+        Arc::new(targets::antigravity::AntigravityTarget),
     ]
 }
 

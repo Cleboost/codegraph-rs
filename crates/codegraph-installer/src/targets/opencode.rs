@@ -111,11 +111,20 @@ impl AgentTarget for OpencodeTarget {
     }
 
     fn detect(&self, opts: &InstallOpts) -> DetectStatus {
-        let Some(p) = self.config_path(opts) else {
+        // Agent presence: binary in PATH or ~/.config/opencode/ exists.
+        let installed = which::which("opencode").is_ok()
+            || dirs::config_dir()
+                .map(|d| d.join("opencode").exists())
+                .unwrap_or(false);
+        if !installed {
             return DetectStatus::NotFound;
+        }
+        // Check if codegraph is already configured in the target path.
+        let Some(p) = self.config_path(opts) else {
+            return DetectStatus::Found;
         };
         if !p.exists() {
-            return DetectStatus::NotFound;
+            return DetectStatus::Found;
         }
         let Ok(text) = std::fs::read_to_string(p.as_std_path()) else {
             return DetectStatus::Found;

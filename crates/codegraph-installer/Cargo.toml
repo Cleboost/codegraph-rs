@@ -11,6 +11,7 @@ serde_json = { workspace = true }
 jsonc-parser = { workspace = true }
 toml_edit = { workspace = true }
 dirs = { workspace = true }
+which = { workspace = true }
 camino = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }

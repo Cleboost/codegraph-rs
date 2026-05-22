@@ -34,11 +34,19 @@ impl AgentTarget for CursorTarget {
     }
 
     fn detect(&self, opts: &InstallOpts) -> DetectStatus {
-        let Some(p) = self.mcp_path(opts) else {
+        // Agent presence: ~/.cursor/ must exist (created by Cursor editor).
+        let Some(home) = dirs::home_dir() else {
             return DetectStatus::NotFound;
         };
-        if !p.exists() {
+        if !home.join(".cursor").exists() {
             return DetectStatus::NotFound;
+        }
+        // Check if codegraph is already configured in the target path.
+        let Some(p) = self.mcp_path(opts) else {
+            return DetectStatus::Found;
+        };
+        if !p.exists() {
+            return DetectStatus::Found;
         }
         let Ok(v) = jsonutil::read_or_default(&p) else {
             return DetectStatus::Found;

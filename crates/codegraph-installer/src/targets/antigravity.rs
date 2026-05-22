@@ -1,5 +1,7 @@
-//! Hermes — JSON config at `~/.hermes/mcp.json`.
-//! Mirrors Claude wiring; adjust as Hermes spec evolves.
+//! Antigravity CLI — Google's Go-based terminal agent (successor to Gemini CLI).
+//! MCP config lives in a dedicated `mcp_config.json`, not inline in settings.
+//! Global:    ~/.gemini/antigravity-cli/mcp_config.json
+//! Workspace: .agents/mcp_config.json
 
 use crate::{
     targets::jsonutil, AgentTarget, DetectStatus, InstallOpts, InstallReport, INSTRUCTIONS_MD,
@@ -8,45 +10,55 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use serde_json::{json, Value};
 
-pub struct HermesTarget;
+pub struct AntigravityTarget;
 
-impl HermesTarget {
+impl AntigravityTarget {
     fn mcp_path(&self, opts: &InstallOpts) -> Option<Utf8PathBuf> {
         if opts.global {
             let home = dirs::home_dir()?;
-            Utf8PathBuf::from_path_buf(home.join(".hermes").join("mcp.json")).ok()
+            Utf8PathBuf::from_path_buf(
+                home.join(".gemini")
+                    .join("antigravity-cli")
+                    .join("mcp_config.json"),
+            )
+            .ok()
         } else {
             opts.project_root
                 .as_ref()
-                .map(|r| r.join(".hermes").join("mcp.json"))
+                .map(|r| r.join(".agents").join("mcp_config.json"))
         }
     }
+
     fn instructions_path(&self, opts: &InstallOpts) -> Option<Utf8PathBuf> {
         if opts.global {
             let home = dirs::home_dir()?;
-            Utf8PathBuf::from_path_buf(home.join(".hermes").join("AGENTS.md")).ok()
+            Utf8PathBuf::from_path_buf(
+                home.join(".gemini").join("antigravity-cli").join("AGENTS.md"),
+            )
+            .ok()
         } else {
             opts.project_root
                 .as_ref()
-                .map(|r| r.join(".hermes").join("AGENTS.md"))
+                .map(|r| r.join(".agents").join("AGENTS.md"))
         }
     }
 }
 
-impl AgentTarget for HermesTarget {
+impl AgentTarget for AntigravityTarget {
     fn id(&self) -> &'static str {
-        "hermes"
+        "antigravity"
     }
+
     fn label(&self) -> &'static str {
-        "Hermes"
+        "Antigravity CLI"
     }
 
     fn detect(&self, opts: &InstallOpts) -> DetectStatus {
-        // Agent presence: ~/.hermes/ must exist.
+        // Agent presence: ~/.gemini/antigravity-cli/ must exist.
         let Some(home) = dirs::home_dir() else {
             return DetectStatus::NotFound;
         };
-        if !home.join(".hermes").exists() {
+        if !home.join(".gemini").join("antigravity-cli").exists() {
             return DetectStatus::NotFound;
         }
         // Check if codegraph is already configured in the target path.
@@ -69,19 +81,21 @@ impl AgentTarget for HermesTarget {
     fn install(&self, opts: &InstallOpts) -> Result<InstallReport> {
         let mcp = self
             .mcp_path(opts)
-            .ok_or_else(|| anyhow::anyhow!("no hermes path"))?;
+            .ok_or_else(|| anyhow::anyhow!("no antigravity path"))?;
         let mut v = jsonutil::read_or_default(&mcp)?;
+
         let mut args = vec![Value::String("serve".into()), Value::String("--mcp".into())];
         if let Some(root) = &opts.project_root {
             args.push(Value::String("--path".into()));
             args.push(Value::String(root.to_string()));
         }
         let entry = json!({ "command": opts.binary_path.as_str(), "args": args });
+
         let mut changed = false;
         {
             let obj = v
                 .as_object_mut()
-                .ok_or_else(|| anyhow::anyhow!("hermes config not an object"))?;
+                .ok_or_else(|| anyhow::anyhow!("mcp_config.json not an object"))?;
             let servers = obj
                 .entry("mcpServers")
                 .or_insert_with(|| Value::Object(Default::default()));
@@ -93,11 +107,13 @@ impl AgentTarget for HermesTarget {
                 changed = true;
             }
         }
+
         let mut written = Vec::new();
         if changed {
             jsonutil::write_pretty(&mcp, &v)?;
             written.push(mcp);
         }
+
         if let Some(md) = self.instructions_path(opts) {
             let existing = std::fs::read_to_string(md.as_std_path()).ok();
             if existing.as_deref() != Some(INSTRUCTIONS_MD) {
@@ -108,6 +124,7 @@ impl AgentTarget for HermesTarget {
                 written.push(md);
             }
         }
+
         if written.is_empty() {
             Ok(InstallReport::Unchanged)
         } else {

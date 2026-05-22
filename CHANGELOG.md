@@ -7,6 +7,70 @@ a [GitHub Release](https://github.com/colbymchenry/codegraph/releases) tagged
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2026-05-22
+
+### Added
+- **Release archives now ship with a `SHA256SUMS` file**, and the npm launcher
+  verifies the bundle it downloads against it — a mismatch aborts before
+  anything runs. Releases published before this change have no checksum file, so
+  the verification is skipped (not failed) when none is available.
+
+### Fixed
+- **`codegraph: no prebuilt bundle for <platform>` after installing through a
+  registry mirror.** Installing `@colbymchenry/codegraph` from a registry that
+  hadn't mirrored the matching per-platform package — most often the
+  npmmirror/cnpm mirrors, but any lazily-syncing mirror or corporate proxy can
+  do it — left every command failing with `no prebuilt bundle for <platform>`.
+  The runtime ships as a per-platform `optionalDependency`, and npm treats an
+  optional package it can't fetch as a success and silently skips it, so the
+  bundle simply went missing. The launcher now self-heals: when the platform
+  bundle isn't installed, it downloads the same archive from GitHub Releases
+  (cached under `~/.codegraph/bundles/` for next time) and runs that — so a
+  global install works even on a mirror that never carried the platform package.
+  Set `CODEGRAPH_NO_DOWNLOAD=1` to disable the network fallback, or
+  `CODEGRAPH_DOWNLOAD_BASE=<url>` to point it at your own mirror of the release
+  archives; the standalone `install.sh` remains the no-Node alternative. Resolves
+  [#303](https://github.com/colbymchenry/codegraph/issues/303).
+
+## [0.9.3] - 2026-05-22
+
+### Added
+- **`codegraph uninstall` command.** Cleanly removes CodeGraph from every agent
+  it's configured on — Claude Code, Cursor, Codex CLI, opencode, and Hermes
+  Agent — in one step. It asks up front whether to remove the global config
+  (`~/.claude`, `~/.codex`, …) or just this project's local config (no flags
+  required), then prints exactly which agents it touched so you can see what
+  changed. `--location`, `--target`, and `--yes` are accepted for scripted /
+  non-interactive use. It removes only what `install` wrote (MCP server entry,
+  instructions block, permissions) and leaves your `.codegraph/` index alone
+  (use `codegraph uninit` for that). Resolves
+  [#313](https://github.com/colbymchenry/codegraph/issues/313) — previously the
+  only cleanup path was an npm `preuninstall` hook that the published bundle
+  never shipped, so `npm uninstall -g` left every agent pointing at a CodeGraph
+  MCP server that no longer existed.
+
+### Fixed
+- **`Fatal process out of memory: Zone` crash while indexing large projects.**
+  On Node.js 22 and 24 — including CodeGraph's own bundled runtime — running
+  `codegraph index` / `codegraph init` on a large multi-language repo could
+  abort the entire process partway through parsing with
+  `Fatal process out of memory: Zone`, even with tens of GB of RAM free (the
+  failure is in a V8-internal compilation arena, not the JS heap). The cause is
+  V8's "turboshaft" optimizing WASM compiler exhausting its Zone budget while
+  compiling tree-sitter's large WebAssembly grammars on a background thread.
+  CodeGraph now runs with V8's `--liftoff-only`, which keeps grammar compilation
+  on the baseline compiler and never reaches the optimizing tier, eliminating
+  the crash; indexing output is otherwise unchanged. The bundled launcher passes
+  the flag directly, and any other launch path (from source, `npx`, a globally
+  linked dev build) re-execs once with it automatically. Resolves
+  [#298](https://github.com/colbymchenry/codegraph/issues/298) and
+  [#293](https://github.com/colbymchenry/codegraph/issues/293). (Node 25 stays
+  blocked — its variant of this V8 bug is not resolved by `--liftoff-only`.)
+- **Cursor uninstall left an orphaned `.cursor/rules/codegraph.mdc`.** It
+  stripped the rule body but left the file and its `description: CodeGraph …`
+  frontmatter behind. The dedicated rules file is now deleted outright on
+  uninstall, while any content you added outside CodeGraph's markers is kept.
+
 ## [0.9.2] - 2026-05-21
 
 ### Added
@@ -93,6 +157,8 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   find its bundle. The release pipeline now verifies every package reached the
   registry (and is idempotent), so a release can't pass green-but-broken again.
 
+[0.9.4]: https://github.com/colbymchenry/codegraph/releases/tag/v0.9.4
+[0.9.3]: https://github.com/colbymchenry/codegraph/releases/tag/v0.9.3
 [0.9.2]: https://github.com/colbymchenry/codegraph/releases/tag/v0.9.2
 [0.9.1]: https://github.com/colbymchenry/codegraph/releases/tag/v0.9.1
 

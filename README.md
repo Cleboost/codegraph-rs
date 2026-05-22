@@ -56,6 +56,16 @@ codegraph init -i
 
 </div>
 
+### Uninstall
+
+Changed your mind? One command removes CodeGraph from every agent it configured:
+
+```bash
+codegraph uninstall
+```
+
+<sub>Reverses the installer — strips CodeGraph's MCP server config, instructions, and permissions from each configured agent. Your project indexes (`.codegraph/`) are left untouched; remove those per-project with `codegraph uninit`. Use `--target` to remove from specific agents, or `--yes` to run non-interactively.</sub>
+
 ---
 
 ## Why CodeGraph?
@@ -333,6 +343,7 @@ At the start of a session, ask the user if they'd like to initialize CodeGraph:
 ```bash
 codegraph                         # Run interactive installer
 codegraph install                 # Run installer (explicit)
+codegraph uninstall               # Remove CodeGraph from your agents (inverse of install)
 codegraph init [path]             # Initialize in a project (--index to also index)
 codegraph uninit [path]           # Remove CodeGraph from a project (--force to skip prompt)
 codegraph index [path]            # Full index (--force to re-index, --quiet for less output)

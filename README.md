@@ -222,28 +222,15 @@ The Rust port:
 - Parses in parallel via `rayon`
 - Builds with `lto="fat"`, `codegen-units=1`, `strip`, `panic=abort`
 
-Result: **~30 MB** stripped, **sub-second** startup, **~5× faster** indexing
+Result: **~5 MB** stripped, **sub-second** startup, **~5× faster** indexing
 on the same workspace.
 
-## Status
-
-This is a **0.x** release. The MVP is functional end-to-end:
-
-- ✅ 15 languages indexed
-- ✅ FTS5 search, graph traversal, impact analysis
-- ✅ MCP stdio server with 9 tools
-- ✅ Multi-agent installer (idempotent, sibling-preserving)
-- ✅ File watcher + incremental sync
-- ✅ Cross-platform release pipeline (Linux/macOS/Windows)
-
-Still to come:
+# Roadmap:
 
 - Framework-aware route extraction (Express, Laravel, Rails, FastAPI, Django,
   Spring, Axum, …)
 - Additional grammars (Kotlin, Dart, Pascal, Luau, Svelte/Vue/Liquid)
 - Eval harness for accuracy regression testing
-
-See [`docs/PLAN.md`](docs/PLAN.md) for the roadmap.
 
 ## Development
 

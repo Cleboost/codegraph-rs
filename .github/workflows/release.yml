@@ -137,7 +137,7 @@ jobs:
           sha256sum codegraph-x86_64-unknown-linux-musl.tar.gz | awk '{print $1}' > x86_64.sha256
           sha256sum codegraph-aarch64-unknown-linux-gnu.tar.gz | awk '{print $1}' > aarch64.sha256
 
-      - name: Render PKGBUILD + .SRCINFO
+      - name: Render PKGBUILD
         env:
           VERSION: ${{ needs.release.outputs.version }}
         run: |
@@ -152,21 +152,13 @@ jobs:
             -e "s/^sha256sums_x86_64=.*/sha256sums_x86_64=('$x86_sha')/" \
             -e "s/^sha256sums_aarch64=.*/sha256sums_aarch64=('$arm_sha')/" \
             PKGBUILD
-
-          docker run --rm -v "$PWD:/pkg" -w /pkg archlinux:base-devel bash -c '
-            useradd -m builder && chown -R builder /pkg
-            su builder -c "makepkg --printsrcinfo > .SRCINFO"
-          '
           echo "--- PKGBUILD ---"; cat PKGBUILD
-          echo "--- .SRCINFO ---"; cat .SRCINFO
 
       - name: Publish to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
         with:
           pkgname: codegraph-rs-bin
           pkgbuild: packaging/aur/codegraph-rs-bin/PKGBUILD
-          assets: |
-            packaging/aur/codegraph-rs-bin/.SRCINFO
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

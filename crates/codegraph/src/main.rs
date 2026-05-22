@@ -97,9 +97,9 @@ fn main() -> Result<()> {
 }
 
 fn cmd_install(root: &Utf8Path) -> Result<()> {
-    use codegraph_installer::{DetectStatus, registry, InstallOpts, InstallReport};
+    use codegraph_installer::{registry, DetectStatus, InstallOpts, InstallReport};
     use console::style;
-    use dialoguer::{MultiSelect, theme::ColorfulTheme};
+    use dialoguer::{theme::ColorfulTheme, MultiSelect};
 
     let bin = std::env::current_exe()?;
     let bin = Utf8PathBuf::from_path_buf(bin)

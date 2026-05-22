@@ -33,7 +33,9 @@ impl AntigravityTarget {
         if opts.global {
             let home = dirs::home_dir()?;
             Utf8PathBuf::from_path_buf(
-                home.join(".gemini").join("antigravity-cli").join("AGENTS.md"),
+                home.join(".gemini")
+                    .join("antigravity-cli")
+                    .join("AGENTS.md"),
             )
             .ok()
         } else {

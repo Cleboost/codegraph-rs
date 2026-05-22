@@ -1,0 +1,27 @@
+name: Publish AUR (codegraph-rs-git)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - packaging/aur/codegraph-rs-git/PKGBUILD
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
+        with:
+          pkgname: codegraph-rs-git
+          pkgbuild: packaging/aur/codegraph-rs-git/PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update PKGBUILD"
+          ssh_keyscan_types: rsa,ecdsa,ed25519

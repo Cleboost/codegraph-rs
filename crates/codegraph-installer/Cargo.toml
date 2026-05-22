@@ -1,0 +1,16 @@
+[package]
+name = "codegraph-installer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+jsonc-parser = { workspace = true }
+toml_edit = { workspace = true }
+dirs = { workspace = true }
+camino = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }

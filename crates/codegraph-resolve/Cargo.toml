@@ -1,0 +1,15 @@
+[package]
+name = "codegraph-resolve"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+codegraph-core = { path = "../codegraph-core" }
+codegraph-db   = { path = "../codegraph-db" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+camino = { workspace = true }
+globset = { workspace = true }
+tracing = { workspace = true }

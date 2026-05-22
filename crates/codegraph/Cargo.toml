@@ -1,0 +1,29 @@
+[package]
+name = "codegraph"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Local-first code intelligence: tree-sitter knowledge graph + MCP server."
+
+[[bin]]
+name = "codegraph"
+path = "src/main.rs"
+
+[dependencies]
+codegraph-core      = { path = "../codegraph-core" }
+codegraph-db        = { path = "../codegraph-db" }
+codegraph-extract   = { path = "../codegraph-extract" }
+codegraph-resolve   = { path = "../codegraph-resolve" }
+codegraph-graph     = { path = "../codegraph-graph" }
+codegraph-context   = { path = "../codegraph-context" }
+codegraph-mcp       = { path = "../codegraph-mcp" }
+codegraph-installer = { path = "../codegraph-installer" }
+clap = { workspace = true }
+tokio = { workspace = true }
+notify = { workspace = true }
+notify-debouncer-full = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+camino = { workspace = true }

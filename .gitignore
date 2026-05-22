@@ -1,0 +1,7 @@
+/target
+**/*.rs.bk
+Cargo.lock.bak
+.codegraph/
+.DS_Store
+.idea/
+bun.lock

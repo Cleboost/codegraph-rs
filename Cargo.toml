@@ -1,0 +1,84 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/codegraph-core",
+    "crates/codegraph-db",
+    "crates/codegraph-extract",
+    "crates/codegraph-resolve",
+    "crates/codegraph-graph",
+    "crates/codegraph-context",
+    "crates/codegraph-mcp",
+    "crates/codegraph-installer",
+    "crates/codegraph",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT"
+repository = "https://github.com/cleboost/codegraph"
+authors = ["Cleboost <clement.balarot@gmail.com>"]
+
+[workspace.dependencies]
+# core
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# storage
+rusqlite = { version = "0.32", features = ["bundled", "backup"] }
+
+# tree-sitter core
+tree-sitter = "0.24"
+
+# tree-sitter grammars (one feature per lang on extract crate)
+tree-sitter-typescript = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-python    = "0.23"
+tree-sitter-rust      = "0.23"
+tree-sitter-go        = "0.23"
+tree-sitter-java      = "0.23"
+tree-sitter-c         = "0.23"
+tree-sitter-cpp       = "0.23"
+tree-sitter-c-sharp   = "0.23"
+tree-sitter-ruby      = "0.23"
+tree-sitter-php       = "0.23"
+tree-sitter-scala     = "0.26"
+tree-sitter-swift     = "0.7"
+tree-sitter-kotlin    = "0.3"
+tree-sitter-lua       = "0.5"
+
+# cli / async / fs
+clap = { version = "4", features = ["derive", "wrap_help"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util", "fs", "sync", "time"] }
+notify = "7"
+notify-debouncer-full = "0.4"
+ignore = "0.4"
+globset = "0.4"
+walkdir = "2"
+
+# misc
+camino = { version = "1", features = ["serde1"] }
+dashmap = "6"
+once_cell = "1"
+parking_lot = "0.12"
+rayon = "1"
+indicatif = "0.17"
+dirs = "5"
+toml_edit = "0.22"
+jsonc-parser = "0.26"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+panic = "abort"
+
+[profile.release-small]
+inherits = "release"
+opt-level = "z"

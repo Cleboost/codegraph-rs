@@ -7,7 +7,7 @@ dist/
 .cmem
 
 # IDE
-.idea/
+../.idea/
 .vscode/
 *.swp
 *.swo

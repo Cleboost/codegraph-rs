@@ -7,9 +7,186 @@ a [GitHub Release](https://github.com/colbymchenry/codegraph/releases) tagged
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.2] - 2026-05-21
 
 ### Added
+- **Installer target: Hermes Agent (Nous Research).** `codegraph install` now
+  supports Hermes Agent — it writes the `mcp_servers.codegraph` entry and ensures
+  `platform_toolsets.cli` includes `mcp-codegraph` in `$HERMES_HOME/config.yaml`,
+  so Hermes can drive the CodeGraph knowledge graph like the other agents.
+- **Framework support: Drupal 8/9/10/11** — CodeGraph now detects Drupal
+  projects (via a `drupal/*` dependency in `composer.json`) and adds three
+  levels of intelligence:
+  - **Route extraction**: `*.routing.yml` files emit a `route` node per route,
+    linked by a `references` edge to the `_controller`, `_form`, or
+    entity-handler class/method, so querying a controller method surfaces the
+    URL route that binds it.
+  - **Hook detection**: hook implementations in `.module`, `.install`, `.theme`,
+    and `.inc` files are detected via docblock (`Implements hook_X()`) with a
+    module-name-prefix fallback. Each emits a `references` edge to the canonical
+    `hook_X` name so `codegraph_callers("hook_form_alter")` returns every
+    implementation across modules.
+  - **Resolution**: `_controller`/`_form` FQCNs resolve to their PHP
+    class/method nodes.
+  New `yaml`/`twig` languages are tracked at the file level, the Drupal PHP
+  extensions (`.module`/`.install`/`.theme`/`.inc`) are indexed with the PHP
+  grammar, and `web/core`, `web/modules/contrib`, `web/themes/contrib` are
+  excluded by default. Resolves [#268](https://github.com/colbymchenry/codegraph/issues/268).
+
+### Changed
+- **Zero-config indexing that respects `.gitignore`.** CodeGraph no longer has a
+  config file. It indexes every file whose extension maps to a supported language
+  and honors your `.gitignore` everywhere: in git repos via git itself, and in
+  non-git projects (e.g. a freshly-scaffolded app before `git init`) by reading
+  `.gitignore` files directly — root and nested, the same way git does (via the
+  `ignore` library, so negation/anchoring/nested rules all behave correctly). To
+  keep something out of the graph, add it to `.gitignore`. **Behavior change:**
+  committed files that are *not* gitignored are now indexed even under `vendor/`,
+  `Pods/`, or a committed `dist/` — previously a hardcoded exclude list skipped
+  those names; now `.gitignore` is the single source of truth. Resolves
+  [#283](https://github.com/colbymchenry/codegraph/issues/283).
+
+### Fixed
+- **Windows: `npm i -g @colbymchenry/codegraph` then any `codegraph` command
+  failed with `spawnSync …\codegraph.cmd EINVAL`.** The npm launcher spawned the
+  bundle's `.cmd` file directly, which modern Node refuses to do on Windows
+  (the CVE-2024-27980 hardening — seen on Node 24). The launcher now invokes the
+  bundled `node.exe` against the app directly, so `codegraph` works on Windows
+  regardless of your Node version. Resolves
+  [#289](https://github.com/colbymchenry/codegraph/issues/289).
+
+### Removed
+- **`.codegraph/config.json` and the entire config surface.** Every field was
+  either inert or now redundant with `.gitignore`:
+  - `languages`/`frameworks` never affected indexing (languages are detected per
+    file from extensions; frameworks are auto-detected). `languages` was also
+    broken — its validator only knew the original 8 languages, so setting it to
+    anything newer (C#, PHP, Ruby, C/C++, Swift, Kotlin, Dart, Vue, Scala, Lua, …)
+    threw `Invalid configuration format`.
+  - `extractDocstrings`/`trackCallSites`/`customPatterns` were never read by any
+    extractor.
+  - `include` is now derived from the supported language extensions, `exclude` is
+    replaced by `.gitignore`, and `maxFileSize` (1 MB) is a constant.
+
+  **Breaking (library API):** the `CodeGraphConfig` type, the `config` option on
+  `CodeGraph.init()`, and the `getConfig()`/`updateConfig()`/`getConfigPath`
+  exports are gone. Existing `.codegraph/config.json` files are simply ignored.
+  The `.codegraphignore` marker is no longer supported — use `.gitignore`.
+
+### Security
+- **MCP session marker no longer follows symlinks** (CWE-59). Every
+  `codegraph_context` call writes a `codegraph-consulted-*` marker into the
+  system temp dir; the previous write followed symlinks, so on a multi-user
+  system another local user could pre-plant that path as a symlink and redirect
+  the write onto a victim-writable file. The marker is now opened with
+  `O_NOFOLLOW` and mode `0600`, and a planted symlink is refused rather than
+  followed. Resolves [#280](https://github.com/colbymchenry/codegraph/issues/280).
+
+## [0.9.1] - 2026-05-21
+
+### Fixed
+- **Standalone installers** (`curl … | sh`, `irm … | iex`): the bundled launcher
+  failed with `exec: …/node: not found` because it didn't resolve the symlink the
+  installer puts on your PATH. Installing on a machine with **no Node** now works.
+- **npm**: `@colbymchenry/codegraph-linux-x64` is now published — the 0.9.0
+  release silently shipped 6 of 7 packages, so `npm i -g` on linux-x64 couldn't
+  find its bundle. The release pipeline now verifies every package reached the
+  registry (and is idempotent), so a release can't pass green-but-broken again.
+
+[0.9.2]: https://github.com/colbymchenry/codegraph/releases/tag/v0.9.2
+[0.9.1]: https://github.com/colbymchenry/codegraph/releases/tag/v0.9.1
+
+## [0.9.0] - 2026-05-21
+
+### 🎉 Self-contained: CodeGraph bundles its own runtime — install anywhere, on any Node (or none)
+
+**No more `database is locked`. No more native build failures. No more "WASM fallback active."**
+
+CodeGraph used to need `better-sqlite3`, a native module compiled against your exact
+Node version. When that build failed (common on Windows and locked-down machines) it
+silently dropped to a slow WASM SQLite build with **no WAL** — the root cause of the
+intermittent `database is locked` errors on concurrent MCP tool calls
+([#238](https://github.com/colbymchenry/codegraph/issues/238)). That entire class of
+problem is **gone**: CodeGraph now ships a self-contained Node runtime and uses Node's
+built-in `node:sqlite` (real SQLite, full WAL + FTS5).
+
+- ✅ **Zero native compilation** — nothing to build, ever; nothing to rebuild when Node changes.
+- ✅ **Runs on any Node version — or with no Node at all.** Install via the standalone installers with no Node present, or keep using `npm`/`npx` on any version (your Node only launches the bundled runtime).
+- ✅ **`database is locked` fixed at the root** — real WAL means readers never block on a writer.
+- ⚡ **5–10× faster** than the old WASM fallback for anyone who was stuck on it.
+
+```bash
+# macOS / Linux — no Node required
+curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh
+# Windows (PowerShell) — no Node required
+irm https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.ps1 | iex
+# or, if you have Node (any version):
+npm i -g @colbymchenry/codegraph
+```
+
+### Added
+- **Standalone installers** — one-line install with no Node.js required:
+  `curl -fsSL .../install.sh | sh` (macOS/Linux) and `irm .../install.ps1 | iex`
+  (Windows). They fetch the matching self-contained bundle from GitHub Releases
+  and put `codegraph` on your PATH.
+- **Lua**: CodeGraph now indexes Lua (`.lua`) — functions, methods (table `t.f`
+  and `t:m` definitions become methods with a `t::f` receiver-qualified name),
+  local variables, `require(...)` imports, and the call edges between them.
+  Querying a Lua project (Neovim plugins, Kong, OpenResty, game code) now
+  surfaces its modules, methods, and call graph.
+- **Luau** ([#232](https://github.com/colbymchenry/codegraph/issues/232)):
+  CodeGraph now indexes Luau (`.luau`), Roblox's typed superset of Lua —
+  everything Lua extracts, plus `type` / `export type` aliases, typed function
+  signatures, generics, and Roblox instance-path `require(script.Parent.X)`
+  imports.
+
+### Changed
+- **SQLite backend is now Node's built-in `node:sqlite`** (real SQLite, WAL +
+  FTS5), shipped inside a bundled Node runtime. This fixes the concurrent-read
+  `database is locked` errors ([#238](https://github.com/colbymchenry/codegraph/issues/238))
+  at the root and removes the native build step entirely.
+- **`npm i -g` / `npx` now install a self-contained bundle.** The main package is
+  a tiny shim; the runtime ships as per-platform `optionalDependencies`, so the
+  install works on any Node version (your Node only launches the bundle).
+- **`codegraph status`** now reports the effective journal mode (`wal` vs not),
+  so a `database is locked` report is triageable at a glance.
+
+### Removed
+- **`better-sqlite3`** (optional native dependency) and **`node-sqlite3-wasm`**
+  (WASM fallback) — along with the native-build banner, the WASM fallback path,
+  and the no-WAL lock retries they required. The dependency tree now has zero
+  native addons.
+
+### Fixed
+- **Installer**: re-running `codegraph install` now removes the broken
+  auto-sync hooks that pre-0.8 versions wrote to Claude Code's
+  `settings.json`. Those builds added a `Stop → codegraph sync-if-dirty`
+  hook (and a `PostToolUse → codegraph mark-dirty` partner); both
+  subcommands were later removed from the CLI, so Claude Code reported
+  `Stop hook error: ... unknown command 'sync-if-dirty'` on every turn.
+  The cleanup is surgical — only codegraph's own hook entries are
+  stripped, so unrelated hooks sharing the same file or event (e.g. a
+  GitKraken `gk ai hook run` hook) are left untouched — and it also runs
+  on uninstall, so the npm `preuninstall` step fully reverses a legacy
+  install. Re-run `codegraph install` once on an affected machine to
+  clear the error.
+
+[0.9.0]: https://github.com/colbymchenry/codegraph/releases/tag/v0.9.0
+
+## [0.8.0] - 2026-05-20
+
+### Added
+- **Framework routes (NestJS)**: CodeGraph now recognises NestJS projects and
+  emits `route` nodes — each linked by a `references` edge to its handler
+  method — across all four transport layers: HTTP controllers (the
+  `@Controller` prefix joined with `@Get`/`@Post`/`@Put`/`@Patch`/`@Delete`/
+  `@Head`/`@Options`/`@All`, including empty `@Controller()`/`@Get()`),
+  GraphQL resolvers (`@Query`/`@Mutation`/`@Subscription`), microservice
+  handlers (`@MessagePattern`/`@EventPattern`), and WebSocket gateways
+  (`@SubscribeMessage`, prefixed with the gateway namespace). Detected
+  automatically from any `@nestjs/*` dependency in `package.json`. Querying a
+  controller method or resolver now surfaces the route that binds it.
+  Resolves [#220](https://github.com/colbymchenry/codegraph/issues/220).
 - **MCP / explore**: `codegraph_explore` source sections now carry line
   numbers (cat -n style `<num>\t<code>`, matching the Read tool). This lets
   the agent cite `file:line` straight from the explore payload instead of
@@ -33,6 +210,25 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   setup is actually fast. `codegraph uninit` removes any hooks it installed.
 
 ### Changed
+- **MCP / agent guidance**: CodeGraph now tells agents to answer "how does X
+  work" / architecture questions *directly* — `codegraph_context`, then one
+  `codegraph_explore` for the surfaced symbols — instead of delegating to a
+  file-reading sub-agent or a grep+read loop. The server instructions and the
+  installed instruction files (`CLAUDE.md`, `.cursor/rules/codegraph.mdc`,
+  `AGENTS.md`) previously suggested *spawning a sub-agent* for explore-class
+  questions, which produced the opposite, more expensive behavior: the
+  sub-agent reads files regardless of the index, so CodeGraph became overhead
+  stacked on top of the reads. In rigorous N≥4-per-arm benchmarks this cut the
+  cost of an architecture question by ~42–47% versus a no-CodeGraph agent on
+  medium and large repos (Excalidraw ~600 files, VS Code ~10k), with
+  equal-or-better, `file:line`-cited answers and ~6× fewer tool calls; on a
+  tiny repo (~25 files) it's a wash, since native grep is already trivially
+  cheap there.
+- **MCP / codegraph_node**: `includeCode=true` on a class/interface/struct/enum
+  now returns a compact member outline (fields + method signatures + line
+  numbers) instead of the entire class body — which could be thousands of
+  characters and was rarely needed in full. Functions and methods still return
+  their full body; request a specific member for its source.
 - **Minimum Node.js is now 20** (was 18). Node 18 is end-of-life and the
   native SQLite binding (`better-sqlite3` 12.x) no longer ships a Node 18
   prebuilt binary. Node 22 LTS and Node 24 get the native backend out of the
@@ -48,7 +244,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   now scales with indexed file count: small projects (<500 files) cap at
   ~18KB and skip the "Additional relevant files" / completeness / explore-
   budget reminders that earn their keep on bigger codebases; medium
-  (<5,000) caps at ~28KB; large (<15,000) keeps the historical ~35KB; very
+  (<5,000) caps at ~13KB; large (<15,000) keeps the historical ~35KB; very
   large goes up to ~38KB. A new per-file char cap also prevents a single
   file with many adjacent symbols from collapsing into one whole-file dump
   (the Alamofire `Session.swift` case from #185). Per-file cluster
@@ -61,8 +257,25 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   VS Code ~12%. Agent-trust floor still holds — the Relationships section,
   scored cluster selection, and structured-source output are all retained.
   Thanks to [@essopsp](https://github.com/essopsp) for the repro.
+- **Search ranking (Kotlin / Swift / Scala / C#)**: test files in these
+  languages are now correctly de-prioritized in `codegraph_search`,
+  `codegraph_context`, and `codegraph affected`. Detection previously only
+  recognized `snake_case`/`.test.`-style names plus a handful of Java
+  suffixes, so CamelCase test files (`FooTest.kt`, `BarTests.swift`,
+  `BazSpec.scala`, `QuxTestCase.cs`) and Gradle / Kotlin-Multiplatform /
+  Xcode test source-set directories (`jvmTest/`, `commonTest/`,
+  `androidTest/`, `iosTest/`, `integrationTest/`) were treated as production
+  code and could outrank the real implementation. Detection now matches
+  capital-led `*Test` / `*Tests` / `*Spec` / `*TestCase` filenames and
+  source-set directories — deliberately capital-led so lowercase look-alikes
+  like `latest.kt` and `manifest.kt` are not misclassified.
 
 ### Fixed
+- **MCP / explore**: `codegraph_explore` output is now hard-capped to its
+  adaptive size budget. It could previously overrun (e.g. ~30K against a 28K
+  cap) once the relationship map and trailer sections were appended; the
+  oversized payload then sat in the agent's context and was re-read on every
+  later turn.
 - **Sync / status**: git-untracked files are no longer reported as pending
   "Added" forever. After `codegraph sync` indexed a newly-created untracked
   source file, `codegraph status` kept listing it under Pending Changes and
@@ -200,6 +413,7 @@ and adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
       returns `null` instead of resolving to an unrelated `rollback`
       in the same file.
 
+[0.8.0]: https://github.com/colbymchenry/codegraph/releases/tag/v0.8.0
 [0.7.10]: https://github.com/colbymchenry/codegraph/releases/tag/v0.7.10
 
 ## [0.7.8] - 2026-05-17

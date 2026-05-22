@@ -18,7 +18,7 @@ Agents that consult the graph instead of grepping the filesystem make
 
 - **One binary.** Rust + statically-linked SQLite + native tree-sitter
   grammars. No Node runtime, no `.wasm`, no `node_modules`.
-- **Small.** ~30 MB stripped (vs ~140 MB for the previous TypeScript build).
+- **Small.** ~5 MB stripped (vs ~140 MB for the previous TypeScript build).
 - **Fast.** Parses a 139-file TypeScript project in ~190 ms (release, parallel).
 - **Local.** Index lives in `.codegraph/db.sqlite` next to your code. Nothing
   leaves the machine.

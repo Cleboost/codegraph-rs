@@ -24,10 +24,11 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Cmd {
-    /// Initialize .codegraph/ in the current directory.
+    /// Initialize .codegraph/ in the current directory and index immediately.
+    /// Pass --no-index to skip indexing.
     Init {
-        #[arg(short, long)]
-        index: bool,
+        #[arg(long)]
+        no_index: bool,
     },
     /// Remove the .codegraph/ directory.
     Uninit,
@@ -58,8 +59,6 @@ enum Cmd {
         #[arg(long)]
         mcp: bool,
     },
-    /// Multi-agent installer (placeholder).
-    Install,
 }
 
 fn main() -> Result<()> {
@@ -78,8 +77,9 @@ fn main() -> Result<()> {
             .map_err(|p| anyhow!("non-UTF8 cwd: {}", p.display()))?,
     };
 
-    match cli.cmd.unwrap_or(Cmd::Install) {
-        Cmd::Init { index } => cmd_init(&root, index),
+    let cmd = cli.cmd.ok_or_else(|| anyhow!("no subcommand. Try `codegraph init`"))?;
+    match cmd {
+        Cmd::Init { no_index } => cmd_init(&root, !no_index),
         Cmd::Uninit => cmd_uninit(&root),
         Cmd::Index => cmd_index(&root),
         Cmd::Sync => cmd_sync(&root),
@@ -92,15 +92,41 @@ fn main() -> Result<()> {
             source,
         } => cmd_context(&root, &target, depth, source),
         Cmd::Serve { mcp } => cmd_serve(&root, mcp),
-        Cmd::Install => cmd_install(&root),
     }
 }
 
-fn cmd_install(root: &Utf8Path) -> Result<()> {
-    use codegraph_installer::{registry, DetectStatus, InstallOpts, InstallReport};
+fn db_path(root: &Utf8Path) -> Utf8PathBuf {
+    root.join(CODEGRAPH_DIR).join(DB_FILE)
+}
+
+fn ensure_initialized(root: &Utf8Path) -> Result<()> {
+    if !db_path(root).exists() {
+        return Err(anyhow!("not initialized: run `codegraph init` in {}", root));
+    }
+    Ok(())
+}
+
+fn cmd_init(root: &Utf8Path, do_index: bool) -> Result<()> {
+    use codegraph_installer::{project_registry, DetectStatus, InstallOpts, InstallReport};
     use console::style;
     use dialoguer::{theme::ColorfulTheme, MultiSelect};
 
+    let dir = root.join(CODEGRAPH_DIR);
+    std::fs::create_dir_all(&dir)?;
+    std::fs::write(dir.join(".gitignore"), "*\n")?;
+    std::fs::write(dir.join("version"), env!("CARGO_PKG_VERSION"))?;
+    let db = Db::open(&db_path(root))?;
+    eprintln!("initialized {}", dir);
+
+    if do_index {
+        let stats = Orchestrator::with_registry().index_all(root, &db)?;
+        eprintln!(
+            "indexed {} files, {} nodes, {} edges",
+            stats.files, stats.nodes, stats.edges
+        );
+    }
+
+    // Agent setup
     let bin = std::env::current_exe()?;
     let bin = Utf8PathBuf::from_path_buf(bin)
         .map_err(|p| anyhow!("non-UTF8 bin path: {}", p.display()))?;
@@ -111,7 +137,7 @@ fn cmd_install(root: &Utf8Path) -> Result<()> {
         home_dir: None,
     };
 
-    let all_targets = registry();
+    let all_targets = project_registry();
     let statuses: Vec<DetectStatus> = all_targets.iter().map(|t| t.detect(&opts)).collect();
 
     let found_indices: Vec<usize> = statuses
@@ -135,6 +161,7 @@ fn cmd_install(root: &Utf8Path) -> Result<()> {
         .map(|(i, _)| i)
         .collect();
 
+    eprintln!();
     if !already_indices.is_empty() {
         eprintln!("{}", style("Already configured:").blue());
         for i in &already_indices {
@@ -152,7 +179,6 @@ fn cmd_install(root: &Utf8Path) -> Result<()> {
     }
 
     if found_indices.is_empty() {
-        eprintln!("{}", style("No new agents to configure.").yellow());
         return Ok(());
     }
 
@@ -161,16 +187,13 @@ fn cmd_install(root: &Utf8Path) -> Result<()> {
         .map(|&i| all_targets[i].label().to_string())
         .collect();
 
-    let defaults = vec![false; found_indices.len()];
-
     let chosen = MultiSelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Select agents to configure (space = toggle, enter = confirm)")
         .items(&labels)
-        .defaults(&defaults)
+        .defaults(&vec![false; found_indices.len()])
         .interact()?;
 
     if chosen.is_empty() {
-        eprintln!("nothing selected, aborted");
         return Ok(());
     }
 
@@ -187,34 +210,6 @@ fn cmd_install(root: &Utf8Path) -> Result<()> {
             InstallReport::Unchanged => eprintln!("[{}] unchanged", target.id()),
             InstallReport::Skipped(r) => eprintln!("[{}] skipped: {}", target.id(), r),
         }
-    }
-    Ok(())
-}
-
-fn db_path(root: &Utf8Path) -> Utf8PathBuf {
-    root.join(CODEGRAPH_DIR).join(DB_FILE)
-}
-
-fn ensure_initialized(root: &Utf8Path) -> Result<()> {
-    if !db_path(root).exists() {
-        return Err(anyhow!("not initialized: run `codegraph init` in {}", root));
-    }
-    Ok(())
-}
-
-fn cmd_init(root: &Utf8Path, do_index: bool) -> Result<()> {
-    let dir = root.join(CODEGRAPH_DIR);
-    std::fs::create_dir_all(&dir)?;
-    std::fs::write(dir.join(".gitignore"), "*\n")?;
-    std::fs::write(dir.join("version"), env!("CARGO_PKG_VERSION"))?;
-    let db = Db::open(&db_path(root))?;
-    eprintln!("initialized {}", dir);
-    if do_index {
-        let stats = Orchestrator::with_registry().index_all(root, &db)?;
-        eprintln!(
-            "indexed {} files, {} nodes, {} edges",
-            stats.files, stats.nodes, stats.edges
-        );
     }
     Ok(())
 }

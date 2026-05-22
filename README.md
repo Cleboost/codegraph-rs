@@ -96,14 +96,11 @@ cargo install --git https://github.com/Cleboost/codegraph-rs codegraph
 ## Quick start
 
 ```sh
-# 1. Index this project
+# 1. Init, index, and configure your agents in one step
 cd ~/code/my-project
-codegraph init -i
+codegraph init
 
-# 2. Hook up your editor(s)
-codegraph install
-
-# 3. Use it
+# 2. Use it
 codegraph query UserService
 codegraph context "auth middleware"
 ```
@@ -116,8 +113,7 @@ keeps the index fresh while you edit.
 
 | Command | What it does |
 |---|---|
-| `codegraph install` | Detect installed agents and wire them up |
-| `codegraph init [-i]` | Create `.codegraph/`; `-i` indexes immediately |
+| `codegraph init [--no-index]` | Create `.codegraph/`, index, and configure agents; `--no-index` skips indexing |
 | `codegraph uninit` | Remove `.codegraph/` |
 | `codegraph index` | Full reindex of the workspace |
 | `codegraph sync` | Incremental reindex (sha256-based skip) |

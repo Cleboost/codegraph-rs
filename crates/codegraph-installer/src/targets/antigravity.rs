@@ -11,18 +11,7 @@ impl AntigravityTarget {
     fn config_paths(&self, _opts: &InstallOpts) -> Vec<Utf8PathBuf> {
         let mut paths = Vec::new();
         if let Some(home) = dirs::home_dir() {
-            if let Ok(p) = Utf8PathBuf::from_path_buf(home.join(".gemini").join("antigravity-cli").join("mcp_config.json")) {
-                paths.push(p);
-            }
-            if let Ok(p) = Utf8PathBuf::from_path_buf(home.join(".gemini").join("config").join("mcp_config.json")) {
-                paths.push(p);
-            }
-        }
-        if let Some(config) = dirs::config_dir() {
-            if let Ok(p) = Utf8PathBuf::from_path_buf(config.join("gemini").join("antigravity-cli").join("mcp_config.json")) {
-                paths.push(p);
-            }
-            if let Ok(p) = Utf8PathBuf::from_path_buf(config.join("gemini").join("config").join("mcp_config.json")) {
+            if let Ok(p) = Utf8PathBuf::from_path_buf(home.join(".gemini").join("config").join("plugins").join("codegraph").join("mcp_config.json")) {
                 paths.push(p);
             }
         }
@@ -32,18 +21,7 @@ impl AntigravityTarget {
     fn instructions_paths(&self, _opts: &InstallOpts) -> Vec<Utf8PathBuf> {
         let mut paths = Vec::new();
         if let Some(home) = dirs::home_dir() {
-            if let Ok(p) = Utf8PathBuf::from_path_buf(home.join(".gemini").join("antigravity-cli").join("ANTIGRAVITY.md")) {
-                paths.push(p);
-            }
-            if let Ok(p) = Utf8PathBuf::from_path_buf(home.join(".gemini").join("config").join("ANTIGRAVITY.md")) {
-                paths.push(p);
-            }
-        }
-        if let Some(config) = dirs::config_dir() {
-            if let Ok(p) = Utf8PathBuf::from_path_buf(config.join("gemini").join("antigravity-cli").join("ANTIGRAVITY.md")) {
-                paths.push(p);
-            }
-            if let Ok(p) = Utf8PathBuf::from_path_buf(config.join("gemini").join("config").join("ANTIGRAVITY.md")) {
+            if let Ok(p) = Utf8PathBuf::from_path_buf(home.join(".gemini").join("config").join("plugins").join("codegraph").join("rules").join("codegraph.md")) {
                 paths.push(p);
             }
         }
@@ -135,6 +113,16 @@ impl AgentTarget for AntigravityTarget {
             if changed {
                 jsonutil::write_pretty(settings, &v)?;
                 written.push(settings.clone());
+            }
+
+            // Write plugin.json marker
+            if let Some(parent) = settings.parent() {
+                let plugin_json = parent.join("plugin.json");
+                if !plugin_json.exists() {
+                    let manifest = json!({ "name": "codegraph" });
+                    let _ = jsonutil::write_pretty(&plugin_json, &manifest);
+                    written.push(plugin_json);
+                }
             }
         }
 

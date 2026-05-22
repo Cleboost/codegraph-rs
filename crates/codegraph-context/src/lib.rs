@@ -6,11 +6,13 @@ use codegraph_graph::Traversal;
 use serde::{Deserialize, Serialize};
 use std::fmt::Write;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum Format { Markdown, Json }
-
-impl Default for Format { fn default() -> Self { Format::Markdown } }
+pub enum Format {
+    #[default]
+    Markdown,
+    Json,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ContextRequest {
@@ -23,7 +25,13 @@ pub struct ContextRequest {
 
 impl Default for ContextRequest {
     fn default() -> Self {
-        Self { query: String::new(), depth: 1, include_source: false, limit: 5, format: Format::Markdown }
+        Self {
+            query: String::new(),
+            depth: 1,
+            include_source: false,
+            limit: 5,
+            format: Format::Markdown,
+        }
     }
 }
 
@@ -56,17 +64,35 @@ pub fn build_response(db: &Db, req: &ContextRequest) -> Result<ContextResponse> 
     for n in candidates {
         let callers = trav.callers(n.id, req.depth)?.nodes;
         let callees = trav.callees(n.id, req.depth)?.nodes;
-        let source = if req.include_source { read_source_slice(&n) } else { None };
-        hits.push(ContextHit { node: n, callers, callees, source });
+        let source = if req.include_source {
+            read_source_slice(&n)
+        } else {
+            None
+        };
+        hits.push(ContextHit {
+            node: n,
+            callers,
+            callees,
+            source,
+        });
     }
-    Ok(ContextResponse { query: req.query.clone(), hits })
+    Ok(ContextResponse {
+        query: req.query.clone(),
+        hits,
+    })
 }
 
 fn read_source_slice(n: &Node) -> Option<String> {
     let text = std::fs::read_to_string(n.file.as_std_path()).ok()?;
     let start = n.start_line.saturating_sub(1) as usize;
     let end = (n.end_line as usize).min(text.lines().count());
-    Some(text.lines().skip(start).take(end - start).collect::<Vec<_>>().join("\n"))
+    Some(
+        text.lines()
+            .skip(start)
+            .take(end - start)
+            .collect::<Vec<_>>()
+            .join("\n"),
+    )
 }
 
 fn render_markdown(resp: &ContextResponse) -> String {
@@ -80,7 +106,10 @@ fn render_markdown(resp: &ContextResponse) -> String {
         let _ = writeln!(
             out,
             "\n## `{}` — {} — `{}:{}`",
-            h.node.name, h.node.kind.as_str(), h.node.file, h.node.start_line
+            h.node.name,
+            h.node.kind.as_str(),
+            h.node.file,
+            h.node.start_line
         );
         if let Some(sig) = &h.node.signature {
             let _ = writeln!(out, "\n```{}\n{}\n```", h.node.language, sig);

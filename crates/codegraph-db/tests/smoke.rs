@@ -54,7 +54,13 @@ fn nodes_edges_roundtrip() {
     let (_d, db) = tmp_db();
     let fid = db.upsert_file(&mk_file("src/a.ts")).unwrap();
     let ids = db
-        .insert_nodes(fid, &[mk_node("foo", NodeKind::Function), mk_node("bar", NodeKind::Function)])
+        .insert_nodes(
+            fid,
+            &[
+                mk_node("foo", NodeKind::Function),
+                mk_node("bar", NodeKind::Function),
+            ],
+        )
         .unwrap();
     assert_eq!(ids.len(), 2);
 
@@ -108,11 +114,18 @@ fn fts_search() {
 fn delete_cascade() {
     let (_d, db) = tmp_db();
     let fid = db.upsert_file(&mk_file("src/a.ts")).unwrap();
-    let ids = db.insert_nodes(fid, &[mk_node("foo", NodeKind::Function)]).unwrap();
+    let ids = db
+        .insert_nodes(fid, &[mk_node("foo", NodeKind::Function)])
+        .unwrap();
     db.insert_edges(&[EdgeDraft {
-        from_id: ids[0], to_id: ids[0], kind: EdgeKind::Calls,
-        file_id: Some(fid), line: None, source: None,
-    }]).unwrap();
+        from_id: ids[0],
+        to_id: ids[0],
+        kind: EdgeKind::Calls,
+        file_id: Some(fid),
+        line: None,
+        source: None,
+    }])
+    .unwrap();
 
     db.delete_file_cascade(fid).unwrap();
     let s = db.stats().unwrap();

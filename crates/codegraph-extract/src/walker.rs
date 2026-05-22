@@ -12,7 +12,9 @@ pub struct FileMatch {
 pub fn walk(root: &Utf8Path, extractors: &[Arc<dyn Extractor>]) -> Vec<FileMatch> {
     let mut ext_map: HashMap<&'static str, Arc<dyn Extractor>> = HashMap::new();
     for ex in extractors {
-        for e in ex.extensions() { ext_map.insert(*e, ex.clone()); }
+        for e in ex.extensions() {
+            ext_map.insert(*e, ex.clone());
+        }
     }
 
     let mut out = Vec::new();
@@ -26,11 +28,22 @@ pub fn walk(root: &Utf8Path, extractors: &[Arc<dyn Extractor>]) -> Vec<FileMatch
 
     for entry in walker.flatten() {
         let path = entry.path();
-        if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) { continue; }
-        let Some(ext) = path.extension().and_then(|s| s.to_str()) else { continue; };
-        let Some(ex) = ext_map.get(ext) else { continue; };
-        let Ok(p) = Utf8PathBuf::from_path_buf(path.to_path_buf()) else { continue; };
-        out.push(FileMatch { path: p, extractor: ex.clone() });
+        if !entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
+            continue;
+        }
+        let Some(ext) = path.extension().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        let Some(ex) = ext_map.get(ext) else {
+            continue;
+        };
+        let Ok(p) = Utf8PathBuf::from_path_buf(path.to_path_buf()) else {
+            continue;
+        };
+        out.push(FileMatch {
+            path: p,
+            extractor: ex.clone(),
+        });
     }
     out
 }

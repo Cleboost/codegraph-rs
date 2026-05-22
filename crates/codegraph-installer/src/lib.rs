@@ -19,7 +19,11 @@ pub struct InstallOpts {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DetectStatus { NotFound, Found, AlreadyConfigured }
+pub enum DetectStatus {
+    NotFound,
+    Found,
+    AlreadyConfigured,
+}
 
 #[derive(Debug, Clone)]
 pub enum InstallReport {
@@ -49,5 +53,8 @@ pub fn registry() -> Vec<Arc<dyn AgentTarget>> {
 
 /// Project-scoped targets only (skip ones that only support global config).
 pub fn project_registry() -> Vec<Arc<dyn AgentTarget>> {
-    registry().into_iter().filter(|t| t.id() != "codex").collect()
+    registry()
+        .into_iter()
+        .filter(|t| t.id() != "codex")
+        .collect()
 }

@@ -7,10 +7,14 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 const HARD_LIMIT: usize = 5000;
 
-pub struct Traversal<'a> { db: &'a Db }
+pub struct Traversal<'a> {
+    db: &'a Db,
+}
 
 impl<'a> Traversal<'a> {
-    pub fn new(db: &'a Db) -> Self { Self { db } }
+    pub fn new(db: &'a Db) -> Self {
+        Self { db }
+    }
 
     pub fn callers(&self, id: NodeId, depth: u32) -> Result<TraverseHits> {
         self.traverse(id, depth, &[EdgeKind::Calls], false)
@@ -23,13 +27,17 @@ impl<'a> Traversal<'a> {
     /// Forward impact across calls/references/imports/extends/implements.
     pub fn impact_radius(&self, id: NodeId, max_depth: u32) -> Result<ImpactReport> {
         let kinds = [
-            EdgeKind::Calls, EdgeKind::References, EdgeKind::Imports,
-            EdgeKind::Extends, EdgeKind::Implements,
+            EdgeKind::Calls,
+            EdgeKind::References,
+            EdgeKind::Imports,
+            EdgeKind::Extends,
+            EdgeKind::Implements,
         ];
         let hits = self.traverse(id, max_depth, &kinds, false)?; // who depends on us = incoming
-        let root = self.db.node_by_id(id)?.ok_or_else(|| {
-            codegraph_core::Error::Invalid(format!("node {id} not found"))
-        })?;
+        let root = self
+            .db
+            .node_by_id(id)?
+            .ok_or_else(|| codegraph_core::Error::Invalid(format!("node {id} not found")))?;
         let mut by_kind: HashMap<String, u32> = HashMap::new();
         for n in &hits.nodes {
             *by_kind.entry(n.kind.as_str().into()).or_insert(0) += 1;
@@ -37,10 +45,18 @@ impl<'a> Traversal<'a> {
         let mut direct = Vec::new();
         let mut transitive = Vec::new();
         for (n, d) in hits.nodes.iter().zip(hits.depths.iter()) {
-            if *d == 1 { direct.push(n.clone()); } else { transitive.push(n.clone()); }
+            if *d == 1 {
+                direct.push(n.clone());
+            } else {
+                transitive.push(n.clone());
+            }
         }
         Ok(ImpactReport {
-            root, direct, transitive, by_kind, truncated: hits.truncated,
+            root,
+            direct,
+            transitive,
+            by_kind,
+            truncated: hits.truncated,
         })
     }
 
@@ -61,8 +77,13 @@ impl<'a> Traversal<'a> {
         queue.push_back((start, 0));
 
         while let Some((cur, d)) = queue.pop_front() {
-            if d >= max_depth { continue; }
-            if visited.len() > HARD_LIMIT { truncated = true; break; }
+            if d >= max_depth {
+                continue;
+            }
+            if visited.len() > HARD_LIMIT {
+                truncated = true;
+                break;
+            }
             let next_edges = if forward {
                 self.db.edges_from(cur, kinds)?
             } else {
@@ -81,7 +102,12 @@ impl<'a> Traversal<'a> {
             }
         }
 
-        Ok(TraverseHits { nodes, depths, edges, truncated })
+        Ok(TraverseHits {
+            nodes,
+            depths,
+            edges,
+            truncated,
+        })
     }
 }
 

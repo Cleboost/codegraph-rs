@@ -6,7 +6,7 @@ mod migrations;
 mod model;
 mod queries;
 
-pub use model::{DbStats, FileRow, NodeDraft, EdgeDraft};
+pub use model::{DbStats, EdgeDraft, FileRow, NodeDraft};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use codegraph_core::{Edge, EdgeKind, Error, Node, NodeId, NodeKind, Result};
@@ -27,11 +27,17 @@ impl Db {
             std::fs::create_dir_all(parent)?;
         }
         let mut conn = Connection::open(path).map_err(db_err)?;
-        conn.pragma_update(None, "journal_mode", "WAL").map_err(db_err)?;
-        conn.pragma_update(None, "foreign_keys", "ON").map_err(db_err)?;
-        conn.pragma_update(None, "synchronous", "NORMAL").map_err(db_err)?;
+        conn.pragma_update(None, "journal_mode", "WAL")
+            .map_err(db_err)?;
+        conn.pragma_update(None, "foreign_keys", "ON")
+            .map_err(db_err)?;
+        conn.pragma_update(None, "synchronous", "NORMAL")
+            .map_err(db_err)?;
         migrations::run(&mut conn)?;
-        Ok(Self { conn: Mutex::new(conn), path: path.to_path_buf() })
+        Ok(Self {
+            conn: Mutex::new(conn),
+            path: path.to_path_buf(),
+        })
     }
 
     pub fn open_read_only(path: &Utf8Path) -> Result<Self> {
@@ -40,10 +46,15 @@ impl Db {
             OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
         )
         .map_err(db_err)?;
-        Ok(Self { conn: Mutex::new(conn), path: path.to_path_buf() })
+        Ok(Self {
+            conn: Mutex::new(conn),
+            path: path.to_path_buf(),
+        })
     }
 
-    pub fn path(&self) -> &Utf8Path { &self.path }
+    pub fn path(&self) -> &Utf8Path {
+        &self.path
+    }
 
     pub fn schema_version(&self) -> Result<u32> {
         let c = self.conn.lock();
@@ -60,7 +71,8 @@ impl Db {
 
     pub fn delete_file_cascade(&self, file_id: i64) -> Result<()> {
         let c = self.conn.lock();
-        c.execute("DELETE FROM files WHERE id = ?", [file_id]).map_err(db_err)?;
+        c.execute("DELETE FROM files WHERE id = ?", [file_id])
+            .map_err(db_err)?;
         Ok(())
     }
 
@@ -142,5 +154,9 @@ pub(crate) fn db_err(e: rusqlite::Error) -> Error {
     Error::Db(e.to_string())
 }
 
-pub(crate) fn kind_str(k: NodeKind) -> &'static str { k.as_str() }
-pub(crate) fn ekind_str(k: EdgeKind) -> &'static str { k.as_str() }
+pub(crate) fn kind_str(k: NodeKind) -> &'static str {
+    k.as_str()
+}
+pub(crate) fn ekind_str(k: EdgeKind) -> &'static str {
+    k.as_str()
+}

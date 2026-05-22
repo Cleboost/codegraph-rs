@@ -4,7 +4,9 @@
 //! common walker handles tree-sitter traversal, name extraction, signature
 //! capture, `contains` edges, and import/call emission.
 
-use crate::{Extractor, ExtractResult, LocalEdge, PendingCall, RawImport};
+use crate::{ExtractResult, LocalEdge, PendingCall, RawImport};
+
+pub type ImportExtractFn = fn(&tree_sitter::Node, &[u8]) -> Option<String>;
 use codegraph_core::{EdgeKind, NodeKind, Result};
 use codegraph_db::NodeDraft;
 use tree_sitter::{Node, Parser, Tree};
@@ -25,15 +27,24 @@ pub struct LangSpec {
     /// Tree-sitter kinds that represent an import statement at the top level.
     pub import_kinds: &'static [&'static str],
     /// Optional custom import path extractor; falls back to the entire node text.
-    pub import_extract: Option<fn(&Node, &[u8]) -> Option<String>>,
+    pub import_extract: Option<ImportExtractFn>,
 }
 
 pub fn run(spec: &'static LangSpec, source: &str) -> Result<ExtractResult> {
     let lang = (spec.ts_language)();
     let mut parser = Parser::new();
-    parser.set_language(&lang).map_err(|e| crate::parse_err(format!("set_language: {e}")))?;
-    let tree: Tree = parser.parse(source, None).ok_or_else(|| crate::parse_err("parse failed"))?;
-    let mut ctx = Ctx { spec, src: source.as_bytes(), result: ExtractResult::default(), parent_idx: None };
+    parser
+        .set_language(&lang)
+        .map_err(|e| crate::parse_err(format!("set_language: {e}")))?;
+    let tree: Tree = parser
+        .parse(source, None)
+        .ok_or_else(|| crate::parse_err("parse failed"))?;
+    let mut ctx = Ctx {
+        spec,
+        src: source.as_bytes(),
+        result: ExtractResult::default(),
+        parent_idx: None,
+    };
     walk(&tree.root_node(), &mut ctx);
     Ok(ctx.result)
 }
@@ -60,28 +71,49 @@ fn walk(node: &Node, ctx: &mut Ctx) {
     let prev = ctx.parent_idx;
     if let Some(idx) = pushed {
         if let Some(p) = prev {
-            ctx.result.edges.push(LocalEdge { from_idx: p, to_idx: idx, kind: EdgeKind::Contains, line: None });
+            ctx.result.edges.push(LocalEdge {
+                from_idx: p,
+                to_idx: idx,
+                kind: EdgeKind::Contains,
+                line: None,
+            });
         }
         ctx.parent_idx = Some(idx);
     }
 
     let mut c = node.walk();
-    for ch in node.children(&mut c) { walk(&ch, ctx); }
+    for ch in node.children(&mut c) {
+        walk(&ch, ctx);
+    }
     ctx.parent_idx = prev;
 }
 
 fn push_named(ctx: &mut Ctx, node: &Node, kind: NodeKind) -> Option<usize> {
-    let name_node = node.child_by_field_name("name").or_else(|| first_identifier(node))?;
+    let name_node = node
+        .child_by_field_name("name")
+        .or_else(|| first_identifier(node))?;
     let name = name_node.utf8_text(ctx.src).ok()?.to_string();
-    if name.is_empty() { return None; }
+    if name.is_empty() {
+        return None;
+    }
     let start = node.start_position().row as u32 + 1;
     let end = node.end_position().row as u32 + 1;
-    let body = node.child_by_field_name("body").map(|b| b.start_byte()).unwrap_or(node.end_byte());
+    let body = node
+        .child_by_field_name("body")
+        .map(|b| b.start_byte())
+        .unwrap_or(node.end_byte());
     let sig = std::str::from_utf8(&ctx.src[node.start_byte()..body.min(ctx.src.len())])
-        .ok().map(|s| s.trim().lines().next().unwrap_or("").to_string());
+        .ok()
+        .map(|s| s.trim().lines().next().unwrap_or("").to_string());
     ctx.result.nodes.push(NodeDraft {
-        kind, name, qualified_name: None, start_line: start, end_line: end,
-        signature: sig, docstring: None, language: ctx.spec.language_name.into(),
+        kind,
+        name,
+        qualified_name: None,
+        start_line: start,
+        end_line: end,
+        signature: sig,
+        docstring: None,
+        language: ctx.spec.language_name.into(),
     });
     Some(ctx.result.nodes.len() - 1)
 }
@@ -90,16 +122,28 @@ fn first_identifier<'a>(n: &Node<'a>) -> Option<Node<'a>> {
     let mut c = n.walk();
     let mut found = None;
     for ch in n.children(&mut c) {
-        if matches!(ch.kind(), "identifier" | "type_identifier" | "field_identifier" | "property_identifier" | "simple_identifier") {
-            found = Some(ch); break;
+        if matches!(
+            ch.kind(),
+            "identifier"
+                | "type_identifier"
+                | "field_identifier"
+                | "property_identifier"
+                | "simple_identifier"
+        ) {
+            found = Some(ch);
+            break;
         }
     }
     found
 }
 
 fn emit_call(node: &Node, ctx: &mut Ctx) {
-    let Some(field) = ctx.spec.callee_field else { return };
-    let Some(callee) = node.child_by_field_name(field) else { return };
+    let Some(field) = ctx.spec.callee_field else {
+        return;
+    };
+    let Some(callee) = node.child_by_field_name(field) else {
+        return;
+    };
     let name = if ctx.spec.callee_ident_kinds.contains(&callee.kind()) {
         callee.utf8_text(ctx.src).ok().map(|s| s.to_string())
     } else {
@@ -109,7 +153,9 @@ fn emit_call(node: &Node, ctx: &mut Ctx) {
     let Some(n) = name else { return };
     let Some(from) = ctx.parent_idx else { return };
     ctx.result.pending_calls.push(PendingCall {
-        from_idx: from, target_name: n, line: node.start_position().row as u32 + 1,
+        from_idx: from,
+        target_name: n,
+        line: node.start_position().row as u32 + 1,
     });
 }
 
@@ -122,11 +168,15 @@ fn first_identifier_of_kinds(n: &Node, kinds: &[&str], src: &[u8]) -> Option<Str
     while let Some(level) = stack.last_mut() {
         if let Some(ch) = level.pop() {
             if kinds.contains(&ch.kind()) {
-                if let Ok(t) = ch.utf8_text(src) { last = Some(t.to_string()); }
+                if let Ok(t) = ch.utf8_text(src) {
+                    last = Some(t.to_string());
+                }
             }
             let mut cc = ch.walk();
             let next: Vec<_> = ch.children(&mut cc).collect();
-            if !next.is_empty() { stack.push(next); }
+            if !next.is_empty() {
+                stack.push(next);
+            }
         } else {
             stack.pop();
         }
@@ -142,9 +192,13 @@ fn emit_import(node: &Node, ctx: &mut Ctx) {
     };
     let Some(m) = module else { return };
     let from = ctx.parent_idx.unwrap_or(usize::MAX);
-    if from == usize::MAX { return; }
+    if from == usize::MAX {
+        return;
+    }
     ctx.result.imports.push(RawImport {
-        from_idx: from, module: m, line: node.start_position().row as u32 + 1,
+        from_idx: from,
+        module: m,
+        line: node.start_position().row as u32 + 1,
     });
 }
 
@@ -152,14 +206,23 @@ fn emit_import(node: &Node, ctx: &mut Ctx) {
 #[macro_export]
 macro_rules! lang_extractor {
     ($struct:ident, $spec:expr) => {
+        #[derive(Default)]
         pub struct $struct;
         impl $struct {
-            pub fn new() -> Self { Self }
+            pub fn new() -> Self {
+                Self
+            }
         }
         impl $crate::Extractor for $struct {
-            fn language(&self) -> &'static str { $spec.language_name }
-            fn extensions(&self) -> &'static [&'static str] { $spec.extensions }
-            fn ts_language(&self) -> tree_sitter::Language { ($spec.ts_language)() }
+            fn language(&self) -> &'static str {
+                $spec.language_name
+            }
+            fn extensions(&self) -> &'static [&'static str] {
+                $spec.extensions
+            }
+            fn ts_language(&self) -> tree_sitter::Language {
+                ($spec.ts_language)()
+            }
             fn extract(&self, source: &str) -> codegraph_core::Result<$crate::ExtractResult> {
                 $crate::languages::common::run(&$spec, source)
             }

@@ -27,12 +27,22 @@ pub struct ErrorObj {
 
 impl Response {
     pub fn ok(id: Value, result: Value) -> Self {
-        Self { jsonrpc: "2.0", id, result: Some(result), error: None }
+        Self {
+            jsonrpc: "2.0",
+            id,
+            result: Some(result),
+            error: None,
+        }
     }
     pub fn error(id: Value, code: i32, message: &str) -> Self {
         Self {
-            jsonrpc: "2.0", id, result: None,
-            error: Some(ErrorObj { code, message: message.into() }),
+            jsonrpc: "2.0",
+            id,
+            result: None,
+            error: Some(ErrorObj {
+                code,
+                message: message.into(),
+            }),
         }
     }
 }

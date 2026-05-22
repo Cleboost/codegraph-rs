@@ -1,12 +1,16 @@
-use crate::languages::common::LangSpec;
 use crate::lang_extractor;
+use crate::languages::common::LangSpec;
 use codegraph_core::NodeKind;
 use tree_sitter::Node;
 
-fn ts_language() -> tree_sitter::Language { tree_sitter_c_sharp::LANGUAGE.into() }
+fn ts_language() -> tree_sitter::Language {
+    tree_sitter_c_sharp::LANGUAGE.into()
+}
 
 fn import_path(n: &Node, src: &[u8]) -> Option<String> {
-    n.child_by_field_name("name").and_then(|x| x.utf8_text(src).ok()).map(|s| s.to_string())
+    n.child_by_field_name("name")
+        .and_then(|x| x.utf8_text(src).ok())
+        .map(|s| s.to_string())
 }
 
 pub static SPEC: LangSpec = LangSpec {

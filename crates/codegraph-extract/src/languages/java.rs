@@ -1,9 +1,11 @@
-use crate::languages::common::LangSpec;
 use crate::lang_extractor;
+use crate::languages::common::LangSpec;
 use codegraph_core::NodeKind;
 use tree_sitter::Node;
 
-fn ts_language() -> tree_sitter::Language { tree_sitter_java::LANGUAGE.into() }
+fn ts_language() -> tree_sitter::Language {
+    tree_sitter_java::LANGUAGE.into()
+}
 
 fn import_path(n: &Node, src: &[u8]) -> Option<String> {
     let mut c = n.walk();

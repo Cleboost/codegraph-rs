@@ -23,7 +23,9 @@ fn run(root: Utf8PathBuf, db: Arc<Db>) -> Result<()> {
         Duration::from_millis(500),
         None,
         move |res: notify_debouncer_full::DebounceEventResult| {
-            if let Ok(events) = res { let _ = tx.send(events); }
+            if let Ok(events) = res {
+                let _ = tx.send(events);
+            }
         },
     )?;
     debouncer.watch(root.as_std_path(), RecursiveMode::Recursive)?;
@@ -31,7 +33,9 @@ fn run(root: Utf8PathBuf, db: Arc<Db>) -> Result<()> {
     let orch = Orchestrator::with_registry();
     while let Ok(_events) = rx.recv() {
         match orch.sync(&root, &db) {
-            Ok(s) if s.files > 0 => tracing::info!("watch sync: {} files, {} edges", s.files, s.edges),
+            Ok(s) if s.files > 0 => {
+                tracing::info!("watch sync: {} files, {} edges", s.files, s.edges)
+            }
             Ok(_) => {}
             Err(e) => tracing::warn!("sync failed: {e}"),
         }

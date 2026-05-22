@@ -38,18 +38,25 @@ enum Cmd {
     /// Show index health.
     Status,
     /// Search nodes (FTS).
-    Query { query: String, #[arg(long, default_value_t = 20)] limit: u32 },
+    Query {
+        query: String,
+        #[arg(long, default_value_t = 20)]
+        limit: u32,
+    },
     /// List indexed files under a path prefix.
     Files { path: Option<String> },
     /// Build markdown context for a symbol.
     Context {
         target: String,
-        #[arg(long, default_value_t = 1)] depth: u32,
-        #[arg(long)] source: bool,
+        #[arg(long, default_value_t = 1)]
+        depth: u32,
+        #[arg(long)]
+        source: bool,
     },
     /// Run as MCP server over stdio.
     Serve {
-        #[arg(long)] mcp: bool,
+        #[arg(long)]
+        mcp: bool,
     },
     /// Multi-agent installer (placeholder).
     Install,
@@ -79,7 +86,11 @@ fn main() -> Result<()> {
         Cmd::Status => cmd_status(&root),
         Cmd::Query { query, limit } => cmd_query(&root, &query, limit),
         Cmd::Files { path } => cmd_files(&root, path.as_deref()),
-        Cmd::Context { target, depth, source } => cmd_context(&root, &target, depth, source),
+        Cmd::Context {
+            target,
+            depth,
+            source,
+        } => cmd_context(&root, &target, depth, source),
         Cmd::Serve { mcp } => cmd_serve(&root, mcp),
         Cmd::Install => cmd_install(&root),
     }
@@ -88,7 +99,8 @@ fn main() -> Result<()> {
 fn cmd_install(root: &Utf8Path) -> Result<()> {
     use codegraph_installer::{registry, InstallOpts, InstallReport};
     let bin = std::env::current_exe()?;
-    let bin = Utf8PathBuf::from_path_buf(bin).map_err(|p| anyhow!("non-UTF8 bin path: {}", p.display()))?;
+    let bin = Utf8PathBuf::from_path_buf(bin)
+        .map_err(|p| anyhow!("non-UTF8 bin path: {}", p.display()))?;
     let opts = InstallOpts {
         project_root: Some(root.to_path_buf()),
         global: false,
@@ -100,7 +112,9 @@ fn cmd_install(root: &Utf8Path) -> Result<()> {
         let report = target.install(&opts)?;
         match report {
             InstallReport::Installed(p) | InstallReport::Updated(p) => {
-                for f in p { eprintln!("  wrote {}", f); }
+                for f in p {
+                    eprintln!("  wrote {}", f);
+                }
             }
             InstallReport::Unchanged => eprintln!("  unchanged"),
             InstallReport::Skipped(r) => eprintln!("  skipped: {}", r),
@@ -115,10 +129,7 @@ fn db_path(root: &Utf8Path) -> Utf8PathBuf {
 
 fn ensure_initialized(root: &Utf8Path) -> Result<()> {
     if !db_path(root).exists() {
-        return Err(anyhow!(
-            "not initialized: run `codegraph init` in {}",
-            root
-        ));
+        return Err(anyhow!("not initialized: run `codegraph init` in {}", root));
     }
     Ok(())
 }
@@ -132,7 +143,10 @@ fn cmd_init(root: &Utf8Path, do_index: bool) -> Result<()> {
     eprintln!("initialized {}", dir);
     if do_index {
         let stats = Orchestrator::with_registry().index_all(root, &db)?;
-        eprintln!("indexed {} files, {} nodes, {} edges", stats.files, stats.nodes, stats.edges);
+        eprintln!(
+            "indexed {} files, {} nodes, {} edges",
+            stats.files, stats.nodes, stats.edges
+        );
     }
     Ok(())
 }
@@ -150,7 +164,10 @@ fn cmd_index(root: &Utf8Path) -> Result<()> {
     ensure_initialized(root)?;
     let db = Db::open(&db_path(root))?;
     let stats = Orchestrator::with_registry().index_all(root, &db)?;
-    eprintln!("indexed {} files, {} nodes, {} edges (skipped {})", stats.files, stats.nodes, stats.edges, stats.skipped);
+    eprintln!(
+        "indexed {} files, {} nodes, {} edges (skipped {})",
+        stats.files, stats.nodes, stats.edges, stats.skipped
+    );
     Ok(())
 }
 
@@ -158,7 +175,10 @@ fn cmd_sync(root: &Utf8Path) -> Result<()> {
     ensure_initialized(root)?;
     let db = Db::open(&db_path(root))?;
     let stats = Orchestrator::with_registry().sync(root, &db)?;
-    eprintln!("synced {} files (skipped {}), nodes={} edges={}", stats.files, stats.skipped, stats.nodes, stats.edges);
+    eprintln!(
+        "synced {} files (skipped {}), nodes={} edges={}",
+        stats.files, stats.skipped, stats.nodes, stats.edges
+    );
     Ok(())
 }
 
@@ -179,7 +199,14 @@ fn cmd_query(root: &Utf8Path, q: &str, limit: u32) -> Result<()> {
     let db = Db::open(&db_path(root))?;
     let hits = db.search_nodes(q, limit)?;
     for h in hits {
-        println!("[{}] {}  {}  {}:{}", h.id, h.kind.as_str(), h.name, h.file, h.start_line);
+        println!(
+            "[{}] {}  {}  {}:{}",
+            h.id,
+            h.kind.as_str(),
+            h.name,
+            h.file,
+            h.start_line
+        );
     }
     Ok(())
 }
@@ -213,7 +240,9 @@ fn cmd_serve(root: &Utf8Path, mcp: bool) -> Result<()> {
     }
     ensure_initialized(root).context("init the index before serving")?;
     let db = Arc::new(Db::open(&db_path(root))?);
-    let rt = tokio::runtime::Builder::new_multi_thread().enable_all().build()?;
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
     rt.block_on(async {
         watcher::spawn(root.to_path_buf(), db.clone());
         McpServer::new(db).run_stdio().await

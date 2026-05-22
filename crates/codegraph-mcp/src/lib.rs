@@ -3,7 +3,7 @@
 mod protocol;
 mod tools;
 
-pub use protocol::{Response, ErrorObj, JsonRpcMessage};
+pub use protocol::{ErrorObj, JsonRpcMessage, Response};
 pub use tools::tool_definitions;
 
 use codegraph_db::Db;
@@ -22,7 +22,9 @@ pub struct McpServer {
 }
 
 impl McpServer {
-    pub fn new(db: Arc<Db>) -> Self { Self { db } }
+    pub fn new(db: Arc<Db>) -> Self {
+        Self { db }
+    }
 
     pub async fn run_stdio(self) -> anyhow::Result<()> {
         let stdin = tokio::io::stdin();
@@ -33,14 +35,22 @@ impl McpServer {
         loop {
             line.clear();
             let n = reader.read_line(&mut line).await?;
-            if n == 0 { break; }
+            if n == 0 {
+                break;
+            }
             let trimmed = line.trim();
-            if trimmed.is_empty() { continue; }
+            if trimmed.is_empty() {
+                continue;
+            }
 
             let msg: JsonRpcMessage = match serde_json::from_str(trimmed) {
                 Ok(m) => m,
                 Err(e) => {
-                    write_response(&mut stdout, Response::error(Value::Null, -32700, &format!("parse error: {e}"))).await?;
+                    write_response(
+                        &mut stdout,
+                        Response::error(Value::Null, -32700, &format!("parse error: {e}")),
+                    )
+                    .await?;
                     continue;
                 }
             };
@@ -69,7 +79,10 @@ impl McpServer {
             })),
             Some("ping") => Ok(json!({})),
             Some("tools/list") => Ok(json!({ "tools": tool_definitions() })),
-            Some("tools/call") => self.handle_tool_call(msg.params.unwrap_or(Value::Null)).await,
+            Some("tools/call") => {
+                self.handle_tool_call(msg.params.unwrap_or(Value::Null))
+                    .await
+            }
             Some(m) => Err(anyhow::anyhow!("method not found: {m}")),
             None => Err(anyhow::anyhow!("missing method")),
         }
@@ -86,7 +99,10 @@ impl McpServer {
     }
 }
 
-async fn write_response<W: tokio::io::AsyncWrite + Unpin>(w: &mut W, r: Response) -> anyhow::Result<()> {
+async fn write_response<W: tokio::io::AsyncWrite + Unpin>(
+    w: &mut W,
+    r: Response,
+) -> anyhow::Result<()> {
     let s = serde_json::to_string(&r)?;
     w.write_all(s.as_bytes()).await?;
     w.write_all(b"\n").await?;
@@ -95,4 +111,6 @@ async fn write_response<W: tokio::io::AsyncWrite + Unpin>(w: &mut W, r: Response
 }
 
 // Re-export for binary use without exposing Traversal lifetime annoyances.
-pub fn traversal_for(db: &Db) -> Traversal<'_> { Traversal::new(db) }
+pub fn traversal_for(db: &Db) -> Traversal<'_> {
+    Traversal::new(db)
+}

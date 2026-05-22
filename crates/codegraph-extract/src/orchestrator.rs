@@ -1,4 +1,4 @@
-use crate::{walker, Extractor, ExtractResult};
+use crate::{walker, ExtractResult, Extractor};
 use camino::Utf8Path;
 use codegraph_core::Result;
 use codegraph_db::{Db, EdgeDraft, FileRow, NodeDraft};
@@ -22,9 +22,13 @@ pub struct Orchestrator {
 }
 
 impl Orchestrator {
-    pub fn new(extractors: Vec<Arc<dyn Extractor>>) -> Self { Self { extractors } }
+    pub fn new(extractors: Vec<Arc<dyn Extractor>>) -> Self {
+        Self { extractors }
+    }
 
-    pub fn with_registry() -> Self { Self::new(crate::registry()) }
+    pub fn with_registry() -> Self {
+        Self::new(crate::registry())
+    }
 
     pub fn index_all(&self, root: &Utf8Path, db: &Db) -> Result<ExtractStats> {
         db.purge()?;
@@ -40,14 +44,16 @@ impl Orchestrator {
 
         let mut stats = ExtractStats::default();
         let mut all_pending: Vec<PendingCallRow> = Vec::new();
-        for Parsed { row, result, ext_idx: _ } in parsed {
+        for Parsed { row, result } in parsed {
             // Skip if file's existing sha matches — no-op sync optimization.
             if let Ok(Some(existing)) = db.file_by_path(row.path.as_str()) {
                 if existing.sha256 == row.sha256 {
                     stats.skipped += 1;
                     continue;
                 }
-                if let Some(eid) = existing.id { db.delete_file_cascade(eid)?; }
+                if let Some(eid) = existing.id {
+                    db.delete_file_cascade(eid)?;
+                }
             }
 
             let fid = db.upsert_file(&row)?;
@@ -60,8 +66,12 @@ impl Orchestrator {
                     let f = *ids.get(e.from_idx)?;
                     let t = *ids.get(e.to_idx)?;
                     Some(EdgeDraft {
-                        from_id: f, to_id: t, kind: e.kind,
-                        file_id: Some(fid), line: e.line, source: Some("extract".into()),
+                        from_id: f,
+                        to_id: t,
+                        kind: e.kind,
+                        file_id: Some(fid),
+                        line: e.line,
+                        source: Some("extract".into()),
                     })
                 })
                 .collect();
@@ -91,7 +101,6 @@ impl Orchestrator {
 struct Parsed {
     row: FileRow,
     result: ExtractResult,
-    ext_idx: usize,
 }
 
 fn parse_one(fm: &walker::FileMatch) -> Result<Option<Parsed>> {
@@ -127,5 +136,5 @@ fn parse_one(fm: &walker::FileMatch) -> Result<Option<Parsed>> {
             .map(|d| d.as_secs() as i64)
             .unwrap_or(0),
     };
-    Ok(Some(Parsed { row, result, ext_idx: 0 }))
+    Ok(Some(Parsed { row, result }))
 }

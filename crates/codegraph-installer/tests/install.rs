@@ -17,10 +17,20 @@ fn install_idempotent() {
     for target in registry() {
         assert_eq!(target.detect(&o), DetectStatus::NotFound);
         let r1 = target.install(&o).unwrap();
-        assert!(matches!(r1, InstallReport::Installed(_)), "{} first install: {:?}", target.id(), r1);
+        assert!(
+            matches!(r1, InstallReport::Installed(_)),
+            "{} first install: {:?}",
+            target.id(),
+            r1
+        );
         assert_eq!(target.detect(&o), DetectStatus::AlreadyConfigured);
         let r2 = target.install(&o).unwrap();
-        assert!(matches!(r2, InstallReport::Unchanged), "{} re-install: {:?}", target.id(), r2);
+        assert!(
+            matches!(r2, InstallReport::Unchanged),
+            "{} re-install: {:?}",
+            target.id(),
+            r2
+        );
     }
 }
 
@@ -32,8 +42,18 @@ fn uninstall_removes_mcp_entry() {
     for target in registry() {
         target.install(&o).unwrap();
         let r = target.uninstall(&o).unwrap();
-        assert!(matches!(r, InstallReport::Updated(_)), "{} uninstall: {:?}", target.id(), r);
-        assert_eq!(target.detect(&o), DetectStatus::Found, "{} should remain installed-but-not-configured", target.id());
+        assert!(
+            matches!(r, InstallReport::Updated(_)),
+            "{} uninstall: {:?}",
+            target.id(),
+            r
+        );
+        assert_eq!(
+            target.detect(&o),
+            DetectStatus::Found,
+            "{} should remain installed-but-not-configured",
+            target.id()
+        );
     }
 }
 
@@ -46,14 +66,22 @@ fn sibling_keys_preserved() {
     std::fs::write(
         claude_settings.as_std_path(),
         r#"{"mcpServers":{"other":{"command":"foo"}},"theme":"dark"}"#,
-    ).unwrap();
+    )
+    .unwrap();
     let o = opts(&root);
     let claude = registry().into_iter().find(|t| t.id() == "claude").unwrap();
     claude.install(&o).unwrap();
-    let v: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(claude_settings.as_std_path()).unwrap(),
-    ).unwrap();
-    assert!(v.pointer("/mcpServers/other").is_some(), "sibling MCP entry must survive");
-    assert_eq!(v.pointer("/theme").and_then(|v| v.as_str()), Some("dark"), "sibling field must survive");
+    let v: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(claude_settings.as_std_path()).unwrap())
+            .unwrap();
+    assert!(
+        v.pointer("/mcpServers/other").is_some(),
+        "sibling MCP entry must survive"
+    );
+    assert_eq!(
+        v.pointer("/theme").and_then(|v| v.as_str()),
+        Some("dark"),
+        "sibling field must survive"
+    );
     assert!(v.pointer("/mcpServers/codegraph").is_some());
 }

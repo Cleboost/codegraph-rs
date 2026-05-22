@@ -1,15 +1,20 @@
-use crate::languages::common::LangSpec;
 use crate::lang_extractor;
+use crate::languages::common::LangSpec;
 use codegraph_core::NodeKind;
 use tree_sitter::Node;
 
-fn ts_language() -> tree_sitter::Language { tree_sitter_cpp::LANGUAGE.into() }
+fn ts_language() -> tree_sitter::Language {
+    tree_sitter_cpp::LANGUAGE.into()
+}
 
 fn import_path(n: &Node, src: &[u8]) -> Option<String> {
     let mut c = n.walk();
     for ch in n.children(&mut c) {
         if matches!(ch.kind(), "string_literal" | "system_lib_string") {
-            return ch.utf8_text(src).ok().map(|s| s.trim_matches(|c| c == '"' || c == '<' || c == '>').to_string());
+            return ch.utf8_text(src).ok().map(|s| {
+                s.trim_matches(|c| c == '"' || c == '<' || c == '>')
+                    .to_string()
+            });
         }
     }
     None

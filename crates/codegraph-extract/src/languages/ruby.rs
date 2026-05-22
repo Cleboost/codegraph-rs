@@ -1,8 +1,10 @@
-use crate::languages::common::LangSpec;
 use crate::lang_extractor;
+use crate::languages::common::LangSpec;
 use codegraph_core::NodeKind;
 
-fn ts_language() -> tree_sitter::Language { tree_sitter_ruby::LANGUAGE.into() }
+fn ts_language() -> tree_sitter::Language {
+    tree_sitter_ruby::LANGUAGE.into()
+}
 
 pub static SPEC: LangSpec = LangSpec {
     language_name: "ruby",

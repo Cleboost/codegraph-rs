@@ -7,7 +7,7 @@ mod walker;
 pub use orchestrator::{ExtractStats, Orchestrator};
 
 use codegraph_core::{Error, NodeKind, Result};
-use codegraph_db::{EdgeDraft, NodeDraft};
+use codegraph_db::NodeDraft;
 use std::sync::Arc;
 
 /// Local edge using node-indices into the same ExtractResult.nodes vec.
@@ -22,7 +22,7 @@ pub struct LocalEdge {
 /// Unresolved call site: target is a name; resolved post-pass by name-matcher.
 #[derive(Debug, Clone)]
 pub struct PendingCall {
-    pub from_idx: usize,        // index into ExtractResult.nodes
+    pub from_idx: usize, // index into ExtractResult.nodes
     pub target_name: String,
     pub line: u32,
 }
@@ -86,7 +86,11 @@ pub fn registry() -> Vec<Arc<dyn Extractor>> {
     v
 }
 
-pub(crate) fn parse_err(s: impl Into<String>) -> Error { Error::Parse(s.into()) }
+pub(crate) fn parse_err(s: impl Into<String>) -> Error {
+    Error::Parse(s.into())
+}
 
 #[allow(dead_code)]
-pub(crate) fn _node_kind_smoke() -> NodeKind { NodeKind::Function }
+pub(crate) fn _node_kind_smoke() -> NodeKind {
+    NodeKind::Function
+}

@@ -30,7 +30,7 @@ jobs:
           - { os: macos-latest, target: aarch64-apple-darwin, ext: "" }
           - { os: windows-latest, target: x86_64-pc-windows-msvc, ext: ".exe" }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -87,7 +87,7 @@ jobs:
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.tag.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -122,7 +122,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ needs.release.outputs.tag != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download release archives
         env:

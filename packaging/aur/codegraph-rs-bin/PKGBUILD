@@ -1,13 +1,13 @@
 # Maintainer: Cleboost <clement.balarot@gmail.com>
-pkgname=codegraph-bin
+pkgname=codegraph-rs-bin
 pkgver=0.0.0
 pkgrel=1
 pkgdesc="Local-first code intelligence: tree-sitter knowledge graph + MCP server (prebuilt binary)"
 arch=('x86_64' 'aarch64')
-url="https://github.com/cleboost/codegraph"
+url="https://github.com/Cleboost/codegraph-rs"
 license=('MIT')
 provides=('codegraph')
-conflicts=('codegraph')
+conflicts=('codegraph' 'codegraph-bin')
 options=(!strip !debug)
 
 source_x86_64=("$pkgname-$pkgver-x86_64.tar.gz::$url/releases/download/v$pkgver/codegraph-x86_64-unknown-linux-musl.tar.gz")

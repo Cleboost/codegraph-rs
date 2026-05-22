@@ -120,7 +120,7 @@ jobs:
             || gh release create "$tag" --draft --title "$tag" --generate-notes artifacts/*
 
   aur:
-    name: Publish AUR (codegraph-bin)
+    name: Publish AUR (codegraph-rs-bin)
     needs: release
     runs-on: ubuntu-latest
     if: ${{ needs.release.outputs.tag != '' }}
@@ -150,7 +150,7 @@ jobs:
           set -euo pipefail
           x86_sha=$(cat dl/x86_64.sha256)
           arm_sha=$(cat dl/aarch64.sha256)
-          cd packaging/aur/codegraph-bin
+          cd packaging/aur/codegraph-rs-bin
 
           sed -i \
             -e "s/^pkgver=.*/pkgver=$VERSION/" \
@@ -169,10 +169,10 @@ jobs:
       - name: Publish to AUR
         uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
         with:
-          pkgname: codegraph-bin
-          pkgbuild: packaging/aur/codegraph-bin/PKGBUILD
+          pkgname: codegraph-rs-bin
+          pkgbuild: packaging/aur/codegraph-rs-bin/PKGBUILD
           assets: |
-            packaging/aur/codegraph-bin/.SRCINFO
+            packaging/aur/codegraph-rs-bin/.SRCINFO
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

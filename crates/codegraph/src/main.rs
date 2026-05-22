@@ -79,7 +79,9 @@ fn main() -> Result<()> {
             .map_err(|p| anyhow!("non-UTF8 cwd: {}", p.display()))?,
     };
 
-    let cmd = cli.cmd.ok_or_else(|| anyhow!("no subcommand. Try `codegraph init`"))?;
+    let cmd = cli
+        .cmd
+        .ok_or_else(|| anyhow!("no subcommand. Try `codegraph init`"))?;
     match cmd {
         Cmd::Init { no_index } => cmd_init(&root, !no_index),
         Cmd::Uninit => cmd_uninit(&root),

@@ -2,10 +2,22 @@ use camino::Utf8PathBuf;
 use codegraph_installer::{project_registry as registry, DetectStatus, InstallOpts, InstallReport};
 
 fn opts(root: &Utf8PathBuf) -> InstallOpts {
+    // Create presence markers for every agent so detect() returns Found/AlreadyConfigured
+    // instead of NotFound in the isolated temp dir.
+    for marker in &[
+        ".claude",
+        ".cursor",
+        ".hermes",
+        ".gemini/antigravity-cli",
+        ".config/opencode",
+    ] {
+        std::fs::create_dir_all(root.join(marker).as_std_path()).unwrap();
+    }
     InstallOpts {
         project_root: Some(root.clone()),
         global: false,
         binary_path: Utf8PathBuf::from("/usr/local/bin/codegraph"),
+        home_dir: Some(root.clone()),
     }
 }
 
@@ -15,7 +27,7 @@ fn install_idempotent() {
     let root = Utf8PathBuf::from_path_buf(d.path().to_path_buf()).unwrap();
     let o = opts(&root);
     for target in registry() {
-        assert_eq!(target.detect(&o), DetectStatus::NotFound);
+        assert_eq!(target.detect(&o), DetectStatus::Found);
         let r1 = target.install(&o).unwrap();
         assert!(
             matches!(r1, InstallReport::Installed(_)),

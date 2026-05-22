@@ -108,6 +108,7 @@ fn cmd_install(root: &Utf8Path) -> Result<()> {
         project_root: Some(root.to_path_buf()),
         global: false,
         binary_path: bin,
+        home_dir: None,
     };
 
     let all_targets = registry();

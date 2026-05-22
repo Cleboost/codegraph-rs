@@ -113,6 +113,10 @@ impl AgentTarget for OpencodeTarget {
     fn detect(&self, opts: &InstallOpts) -> DetectStatus {
         // Agent presence: binary in PATH or ~/.config/opencode/ exists.
         let installed = which::which("opencode").is_ok()
+            || opts
+                .home_dir()
+                .map(|h| h.join(".config").join("opencode").exists())
+                .unwrap_or(false)
             || dirs::config_dir()
                 .map(|d| d.join("opencode").exists())
                 .unwrap_or(false);

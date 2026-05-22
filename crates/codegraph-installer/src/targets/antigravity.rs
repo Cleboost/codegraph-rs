@@ -55,7 +55,7 @@ impl AgentTarget for AntigravityTarget {
 
     fn detect(&self, opts: &InstallOpts) -> DetectStatus {
         // Agent presence: ~/.gemini/antigravity-cli/ must exist.
-        let Some(home) = dirs::home_dir() else {
+        let Some(home) = opts.home_dir() else {
             return DetectStatus::NotFound;
         };
         if !home.join(".gemini").join("antigravity-cli").exists() {

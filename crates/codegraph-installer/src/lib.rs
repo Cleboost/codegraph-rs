@@ -16,6 +16,18 @@ pub struct InstallOpts {
     pub global: bool,
     /// Absolute path to the `codegraph` binary (for MCP `command`).
     pub binary_path: Utf8PathBuf,
+    /// Override home directory (used in tests for isolation).
+    /// None = use dirs::home_dir().
+    pub home_dir: Option<Utf8PathBuf>,
+}
+
+impl InstallOpts {
+    pub fn home_dir(&self) -> Option<std::path::PathBuf> {
+        self.home_dir
+            .as_ref()
+            .map(|p| p.as_std_path().to_path_buf())
+            .or_else(dirs::home_dir)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

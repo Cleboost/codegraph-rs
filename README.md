@@ -31,11 +31,20 @@ Agents that consult the graph instead of grepping the filesystem make
 
 ### From a release binary (recommended)
 
+Download the latest binary for your platform from the [Releases](https://github.com/cleboost/codegraph/releases) page.
+Extract the archive and run the self-installer:
+
 ```sh
-curl -fsSL https://raw.githubusercontent.com/cleboost/codegraph/main/scripts/install.sh | sh
+# macOS / Linux
+./codegraph install
 ```
 
-Drops `codegraph` into `~/.local/bin` (override with `CODEGRAPH_INSTALL_DIR`).
+```powershell
+# Windows
+.\codegraph.exe install
+```
+
+The installer will automatically copy the binary to `~/.local/bin` and add it to your system's `PATH`.
 Linux x86_64/aarch64, macOS x86_64/arm64, Windows x86_64 supported.
 
 ### From Cargo

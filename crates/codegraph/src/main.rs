@@ -97,14 +97,15 @@ fn main() -> Result<()> {
 }
 
 fn cmd_install(root: &Utf8Path) -> Result<()> {
-    use codegraph_installer::{registry, InstallOpts, InstallReport};
-    let bin = std::env::current_exe()?;
-    let bin = Utf8PathBuf::from_path_buf(bin)
-        .map_err(|p| anyhow!("non-UTF8 bin path: {}", p.display()))?;
+    use codegraph_installer::{registry, InstallOpts, InstallReport, bin_install};
+    
+    // Self-install the binary first
+    let final_bin = bin_install::ensure_installed()?;
+    
     let opts = InstallOpts {
         project_root: Some(root.to_path_buf()),
         global: false,
-        binary_path: bin,
+        binary_path: final_bin,
     };
     for target in registry() {
         let status = target.detect(&opts);

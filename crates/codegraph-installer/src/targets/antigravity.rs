@@ -56,14 +56,12 @@ impl AgentTarget for AntigravityTarget {
     }
 
     fn detect(&self, opts: &InstallOpts) -> DetectStatus {
-        // Agent presence: ~/.gemini/antigravity-cli/ must exist.
         let Some(home) = opts.home_dir() else {
             return DetectStatus::NotFound;
         };
         if !home.join(".gemini").join("antigravity-cli").exists() {
             return DetectStatus::NotFound;
         }
-        // Check if codegraph is already configured in the target path.
         let Some(p) = self.mcp_path(opts) else {
             return DetectStatus::Found;
         };

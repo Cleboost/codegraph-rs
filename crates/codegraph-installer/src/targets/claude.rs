@@ -36,14 +36,12 @@ impl AgentTarget for ClaudeTarget {
     }
 
     fn detect(&self, opts: &InstallOpts) -> DetectStatus {
-        // Agent presence: ~/.claude/ must exist (created on install).
         let Some(home) = opts.home_dir() else {
             return DetectStatus::NotFound;
         };
         if !home.join(".claude").exists() {
             return DetectStatus::NotFound;
         }
-        // Check if codegraph is already configured in the target path.
         let Some(p) = self.settings_path(opts) else {
             return DetectStatus::Found;
         };

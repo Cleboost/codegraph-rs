@@ -44,17 +44,12 @@ impl OpencodeTarget {
         if text.trim().is_empty() {
             return Ok(Value::Object(Default::default()));
         }
-        // Strip comments to parse with serde_json. For round-trip preservation,
-        // a full surgical edit would use jsonc_parser::cst; for now we accept
-        // re-formatting on edit (parity will be added in a follow-up).
         let stripped: String = strip_jsonc_comments(text);
         Ok(serde_json::from_str(&stripped)?)
     }
 }
 
 fn strip_jsonc_comments(text: &str) -> String {
-    // Naive but safe enough: removes // line comments and /* */ block comments
-    // outside string literals.
     let mut out = String::with_capacity(text.len());
     let bytes = text.as_bytes();
     let mut i = 0;
@@ -111,7 +106,6 @@ impl AgentTarget for OpencodeTarget {
     }
 
     fn detect(&self, opts: &InstallOpts) -> DetectStatus {
-        // Agent presence: binary in PATH or ~/.config/opencode/ exists.
         let installed = which::which("opencode").is_ok()
             || opts
                 .home_dir()
@@ -123,7 +117,6 @@ impl AgentTarget for OpencodeTarget {
         if !installed {
             return DetectStatus::NotFound;
         }
-        // Check if codegraph is already configured in the target path.
         let Some(p) = self.config_path(opts) else {
             return DetectStatus::Found;
         };

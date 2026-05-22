@@ -36,7 +36,6 @@ impl<'a> Resolver<'a> {
             return Ok(0);
         }
 
-        // Build file_id → (path, dir) cache to avoid per-site DB lookups.
         let mut file_cache: HashMap<i64, Option<(String, PathBuf)>> = HashMap::new();
         for p in pending {
             file_cache.entry(p.file_id).or_insert_with(|| {
@@ -49,7 +48,6 @@ impl<'a> Resolver<'a> {
             });
         }
 
-        // Group by target_name to batch lookups.
         let mut by_name: HashMap<&str, Vec<&PendingCallRow>> = HashMap::new();
         for p in pending {
             by_name.entry(p.target_name.as_str()).or_default().push(p);
@@ -61,7 +59,6 @@ impl<'a> Resolver<'a> {
             if candidates.is_empty() {
                 continue;
             }
-            // Filter to callable kinds.
             let callable: Vec<_> = candidates
                 .into_iter()
                 .filter(|n| {
@@ -76,9 +73,6 @@ impl<'a> Resolver<'a> {
             }
 
             for site in sites {
-                // Score each candidate by proximity to the call site.
-                // 3 = same file, 2 = same directory, 1 = anywhere else.
-                // Use highest-scoring candidates only (precision > recall for common names).
                 let caller_info = file_cache.get(&site.file_id).and_then(|v| v.as_ref());
                 let best_score = callable
                     .iter()

@@ -147,7 +147,6 @@ fn emit_call(node: &Node, ctx: &mut Ctx) {
     let name = if ctx.spec.callee_ident_kinds.contains(&callee.kind()) {
         callee.utf8_text(ctx.src).ok().map(|s| s.to_string())
     } else {
-        // Find a known identifier-like child (member/selector/field expressions).
         first_identifier_of_kinds(&callee, ctx.spec.callee_ident_kinds, ctx.src)
     };
     let Some(n) = name else { return };
@@ -160,8 +159,6 @@ fn emit_call(node: &Node, ctx: &mut Ctx) {
 }
 
 fn first_identifier_of_kinds(n: &Node, kinds: &[&str], src: &[u8]) -> Option<String> {
-    // Search depth-first for the last identifier-like token — usually the
-    // method/property being invoked in a member expression.
     let mut c = n.walk();
     let mut last = None;
     let mut stack = vec![n.children(&mut c).collect::<Vec<_>>()];

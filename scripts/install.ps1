@@ -27,7 +27,6 @@ if (-not $Tag) {
 
 $AssetName = "codegraph-$Target.zip"
 $Url = "https://github.com/$Repo/releases/download/$Tag/$AssetName"
-$Sha256Url = "https://github.com/$Repo/releases/download/$Tag/codegraph-$Target.sha256"
 
 # Download
 $TmpDir = Join-Path $env:TEMP "codegraph-install-$(Get-Random)"
@@ -36,16 +35,6 @@ $ZipPath = Join-Path $TmpDir $AssetName
 
 Write-Host "Downloading $Url"
 Invoke-WebRequest -Uri $Url -OutFile $ZipPath -UseBasicParsing
-
-# Verify checksum
-Write-Host "Verifying checksum..."
-$expectedHash = ([System.Text.Encoding]::UTF8.GetString((Invoke-WebRequest -Uri $Sha256Url -UseBasicParsing).Content)).Trim().Split(' ')[0].ToUpper()
-$actualHash   = (Get-FileHash -Path $ZipPath -Algorithm SHA256).Hash.ToUpper()
-if ($expectedHash -ne $actualHash) {
-    Write-Error "Checksum mismatch!`n  Expected: $expectedHash`n  Got:      $actualHash"
-    Remove-Item -Recurse -Force $TmpDir
-    exit 1
-}
 
 # Extract
 Expand-Archive -Path $ZipPath -DestinationPath $TmpDir -Force

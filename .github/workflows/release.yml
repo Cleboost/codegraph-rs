@@ -69,12 +69,6 @@ jobs:
           else
             tar -czf "dist/${name}.tar.gz" -C staging .
           fi
-          cd dist
-          if command -v shasum >/dev/null; then
-            shasum -a 256 "${name}".* > "${name}.sha256"
-          else
-            sha256sum "${name}".* > "${name}.sha256"
-          fi
 
       - uses: actions/upload-artifact@v6
         with:

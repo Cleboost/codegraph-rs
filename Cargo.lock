@@ -184,7 +184,7 @@ checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
 name = "codegraph"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "camino",
@@ -209,7 +209,7 @@ dependencies = [
 
 [[package]]
 name = "codegraph-context"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "codegraph-core",
  "codegraph-db",
@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "codegraph-core"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "camino",
  "serde",
@@ -230,7 +230,7 @@ dependencies = [
 
 [[package]]
 name = "codegraph-db"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "camino",
  "codegraph-core",
@@ -244,7 +244,7 @@ dependencies = [
 
 [[package]]
 name = "codegraph-extract"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "camino",
  "codegraph-core",
@@ -276,7 +276,7 @@ dependencies = [
 
 [[package]]
 name = "codegraph-graph"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "camino",
  "codegraph-core",
@@ -288,7 +288,7 @@ dependencies = [
 
 [[package]]
 name = "codegraph-installer"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "camino",
@@ -304,7 +304,7 @@ dependencies = [
 
 [[package]]
 name = "codegraph-mcp"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "anyhow",
  "camino",
@@ -321,7 +321,7 @@ dependencies = [
 
 [[package]]
 name = "codegraph-resolve"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "camino",
  "codegraph-core",

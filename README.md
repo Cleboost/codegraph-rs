@@ -8,7 +8,7 @@
 
 CodeGraph parses your codebase with tree-sitter, stores every symbol, edge,
 and file in a local SQLite database (FTS5), and exposes the graph to
-AI agents — Claude Code, Cursor, Codex CLI, opencode, Hermes, Antigravity CLI — over the
+AI agents — Claude Code, Cursor, Codex CLI, opencode, Hermes — over the
 Model Context Protocol (MCP).
 
 Agents that consult the graph instead of grepping the filesystem make
@@ -23,7 +23,7 @@ Agents that consult the graph instead of grepping the filesystem make
 - **Local.** Index lives in `.codegraph/db.sqlite` next to your code. Nothing
   leaves the machine.
 - **Multi-agent.** A single `codegraph install` configures Claude Code, Cursor,
-  Codex, opencode, Hermes and Antigravity CLI in one go.
+  Codex, opencode and Hermes in one go.
 - **Live.** Built-in file watcher keeps the index in sync while the MCP server
   serves your agent.
 
@@ -142,7 +142,7 @@ crates/
   codegraph-graph/      callers / callees / impact radius (BFS)
   codegraph-context/    markdown + JSON context formatters
   codegraph-mcp/        hand-rolled JSON-RPC 2.0 server over stdio
-  codegraph-installer/  Claude / Cursor / Codex / opencode / Hermes / Antigravity targets
+  codegraph-installer/  Claude / Cursor / Codex / opencode / Hermes targets
   codegraph/            CLI binary (clap) + file watcher (notify)
 ```
 

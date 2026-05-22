@@ -43,6 +43,7 @@ pub trait AgentTarget: Send + Sync {
 
 pub fn registry() -> Vec<Arc<dyn AgentTarget>> {
     vec![
+        Arc::new(targets::antigravity::AntigravityTarget),
         Arc::new(targets::claude::ClaudeTarget),
         Arc::new(targets::cursor::CursorTarget),
         Arc::new(targets::codex::CodexTarget),

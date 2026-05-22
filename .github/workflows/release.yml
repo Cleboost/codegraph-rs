@@ -60,11 +60,14 @@ jobs:
           set -euo pipefail
           bin="target/${{ matrix.target }}/release/codegraph${{ matrix.ext }}"
           name="codegraph-${{ matrix.target }}"
-          mkdir -p dist
+          mkdir -p dist staging
+          cp "$bin" staging/
+          [ -f README.md ] && cp README.md staging/ || true
+          [ -f LICENSE   ] && cp LICENSE   staging/ || true
           if [[ "${{ matrix.ext }}" == ".exe" ]]; then
-            7z a "dist/${name}.zip" "$bin" README.md LICENSE 2>/dev/null || zip -j "dist/${name}.zip" "$bin"
+            ( cd staging && 7z a "../dist/${name}.zip" . )
           else
-            tar -czf "dist/${name}.tar.gz" -C "$(dirname "$bin")" "codegraph"
+            tar -czf "dist/${name}.tar.gz" -C staging .
           fi
           cd dist
           if command -v shasum >/dev/null; then

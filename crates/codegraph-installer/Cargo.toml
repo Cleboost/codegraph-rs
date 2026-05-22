@@ -14,3 +14,6 @@ dirs = { workspace = true }
 camino = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"

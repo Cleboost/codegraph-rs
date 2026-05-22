@@ -19,6 +19,7 @@ codegraph-graph     = { path = "../codegraph-graph" }
 codegraph-context   = { path = "../codegraph-context" }
 codegraph-mcp       = { path = "../codegraph-mcp" }
 codegraph-installer = { path = "../codegraph-installer" }
+dirs = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
 notify = { workspace = true }

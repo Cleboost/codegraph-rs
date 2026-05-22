@@ -8,3 +8,9 @@ repository.workspace = true
 [dependencies]
 codegraph-core = { path = "../codegraph-core" }
 codegraph-db   = { path = "../codegraph-db" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
+camino = { workspace = true }

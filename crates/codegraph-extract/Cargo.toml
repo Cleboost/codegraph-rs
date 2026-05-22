@@ -7,7 +7,12 @@ repository.workspace = true
 
 [dependencies]
 codegraph-core = { path = "../codegraph-core" }
+codegraph-db = { path = "../codegraph-db" }
+codegraph-resolve = { path = "../codegraph-resolve" }
 tree-sitter = { workspace = true }
+sha2 = "0.10"
+hex = "0.4"
+crossbeam-channel = "0.5"
 tree-sitter-typescript = { workspace = true, optional = true }
 tree-sitter-javascript = { workspace = true, optional = true }
 tree-sitter-python    = { workspace = true, optional = true }
@@ -21,19 +26,23 @@ tree-sitter-ruby      = { workspace = true, optional = true }
 tree-sitter-php       = { workspace = true, optional = true }
 tree-sitter-scala     = { workspace = true, optional = true }
 tree-sitter-swift     = { workspace = true, optional = true }
-tree-sitter-kotlin    = { workspace = true, optional = true }
+# tree-sitter-kotlin uses tree-sitter 0.20 — incompatible. Re-enable when upstream upgrades.
+# tree-sitter-kotlin    = { workspace = true, optional = true }
 tree-sitter-lua       = { workspace = true, optional = true }
 ignore = { workspace = true }
 rayon = { workspace = true }
 camino = { workspace = true }
 tracing = { workspace = true }
 
+[dev-dependencies]
+tempfile = "3"
+
 [features]
 default = ["all-langs"]
 all-langs = [
     "lang-typescript", "lang-javascript", "lang-python", "lang-rust", "lang-go",
     "lang-java", "lang-c", "lang-cpp", "lang-csharp", "lang-ruby", "lang-php",
-    "lang-scala", "lang-swift", "lang-kotlin", "lang-lua",
+    "lang-scala", "lang-swift", "lang-lua",
 ]
 lang-typescript = ["dep:tree-sitter-typescript"]
 lang-javascript = ["dep:tree-sitter-javascript"]
@@ -48,5 +57,5 @@ lang-ruby       = ["dep:tree-sitter-ruby"]
 lang-php        = ["dep:tree-sitter-php"]
 lang-scala      = ["dep:tree-sitter-scala"]
 lang-swift      = ["dep:tree-sitter-swift"]
-lang-kotlin     = ["dep:tree-sitter-kotlin"]
+# lang-kotlin     = ["dep:tree-sitter-kotlin"]
 lang-lua        = ["dep:tree-sitter-lua"]

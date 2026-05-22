@@ -1,0 +1,21 @@
+# Maintainer: Cleboost <clement.balarot@gmail.com>
+pkgname=codegraph-bin
+pkgver=0.0.0
+pkgrel=1
+pkgdesc="Local-first code intelligence: tree-sitter knowledge graph + MCP server (prebuilt binary)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/cleboost/codegraph"
+license=('MIT')
+provides=('codegraph')
+conflicts=('codegraph')
+options=(!strip !debug)
+
+source_x86_64=("$pkgname-$pkgver-x86_64.tar.gz::$url/releases/download/v$pkgver/codegraph-x86_64-unknown-linux-musl.tar.gz")
+source_aarch64=("$pkgname-$pkgver-aarch64.tar.gz::$url/releases/download/v$pkgver/codegraph-aarch64-unknown-linux-gnu.tar.gz")
+
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+package() {
+    install -Dm755 "$srcdir/codegraph" "$pkgdir/usr/bin/codegraph"
+}

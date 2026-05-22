@@ -4,6 +4,10 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag (e.g. v0.1.0). Required for manual runs."
+        required: false
 
 permissions:
   contents: write
@@ -78,16 +82,96 @@ jobs:
     name: GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      version: ${{ steps.tag.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            tag="${{ inputs.tag }}"
+            [ -n "$tag" ] || { echo "manual run requires inputs.tag" >&2; exit 1; }
+          else
+            tag="${GITHUB_REF#refs/tags/}"
+          fi
+          [[ "$tag" =~ ^v ]] || { echo "tag must start with v" >&2; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          tag="${GITHUB_REF#refs/tags/}"
-          gh release create "$tag" --draft --title "$tag" --generate-notes artifacts/*
+          tag="${{ steps.tag.outputs.tag }}"
+          gh release view "$tag" >/dev/null 2>&1 \
+            && gh release upload "$tag" artifacts/* --clobber \
+            || gh release create "$tag" --draft --title "$tag" --generate-notes artifacts/*
+
+  aur:
+    name: Publish AUR (codegraph-bin)
+    needs: release
+    runs-on: ubuntu-latest
+    if: ${{ needs.release.outputs.tag != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download release archives
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dl
+          gh release download "$TAG" \
+            --repo "${{ github.repository }}" \
+            --pattern 'codegraph-x86_64-unknown-linux-musl.tar.gz' \
+            --pattern 'codegraph-aarch64-unknown-linux-gnu.tar.gz' \
+            --dir dl
+          cd dl
+          sha256sum codegraph-x86_64-unknown-linux-musl.tar.gz | awk '{print $1}' > x86_64.sha256
+          sha256sum codegraph-aarch64-unknown-linux-gnu.tar.gz | awk '{print $1}' > aarch64.sha256
+
+      - name: Render PKGBUILD + .SRCINFO
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          x86_sha=$(cat dl/x86_64.sha256)
+          arm_sha=$(cat dl/aarch64.sha256)
+          cd packaging/aur/codegraph-bin
+
+          sed -i \
+            -e "s/^pkgver=.*/pkgver=$VERSION/" \
+            -e "s/^pkgrel=.*/pkgrel=1/" \
+            -e "s/^sha256sums_x86_64=.*/sha256sums_x86_64=('$x86_sha')/" \
+            -e "s/^sha256sums_aarch64=.*/sha256sums_aarch64=('$arm_sha')/" \
+            PKGBUILD
+
+          docker run --rm -v "$PWD:/pkg" -w /pkg archlinux:base-devel bash -c '
+            useradd -m builder && chown -R builder /pkg
+            su builder -c "makepkg --printsrcinfo > .SRCINFO"
+          '
+          echo "--- PKGBUILD ---"; cat PKGBUILD
+          echo "--- .SRCINFO ---"; cat .SRCINFO
+
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
+        with:
+          pkgname: codegraph-bin
+          pkgbuild: packaging/aur/codegraph-bin/PKGBUILD
+          assets: |
+            packaging/aur/codegraph-bin/.SRCINFO
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ needs.release.outputs.tag }}"
+          ssh_keyscan_types: rsa,ecdsa,ed25519

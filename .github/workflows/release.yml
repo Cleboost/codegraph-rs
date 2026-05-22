@@ -73,7 +73,7 @@ jobs:
             sha256sum "${name}".* > "${name}.sha256"
           fi
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: codegraph-${{ matrix.target }}
           path: dist/*

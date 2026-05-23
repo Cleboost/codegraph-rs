@@ -67,9 +67,9 @@ pub fn build_response(db: &Db, req: &ContextRequest) -> Result<ContextResponse> 
         let mut cache = HashMap::new();
         for n in &candidates {
             let key = n.file.as_str().to_owned();
-            if !cache.contains_key(&key) {
+            if let std::collections::hash_map::Entry::Vacant(e) = cache.entry(key) {
                 if let Ok(text) = std::fs::read_to_string(n.file.as_std_path()) {
-                    cache.insert(key, text.lines().map(str::to_owned).collect());
+                    e.insert(text.lines().map(str::to_owned).collect());
                 }
             }
         }

@@ -8,7 +8,7 @@ pub mod frameworks;
 pub mod imports;
 pub mod name_match;
 
-use codegraph_core::{Node, EdgeKind, NodeId, Result};
+use codegraph_core::{EdgeKind, Node, NodeId, Result};
 use codegraph_db::{Db, EdgeDraft};
 use std::collections::HashMap;
 use std::path::PathBuf;

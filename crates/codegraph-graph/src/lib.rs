@@ -45,10 +45,7 @@ impl<'a> Traversal<'a> {
         let mut by_kind: HashMap<String, Vec<Node>> = HashMap::new();
         for e in &edges {
             if let Some(n) = self.db.node_by_id(e.from)? {
-                by_kind
-                    .entry(e.kind.as_str().into())
-                    .or_default()
-                    .push(n);
+                by_kind.entry(e.kind.as_str().into()).or_default().push(n);
             }
         }
         Ok(ReferencesReport { root, by_kind })

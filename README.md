@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > Local-first code intelligence for AI agents. Built in Rust. Single static
-> binary, ~30 MB. Tree-sitter knowledge graph in SQLite, served over MCP.
+> binary, ~5 MB. Tree-sitter knowledge graph in SQLite, served over MCP.
 
 CodeGraph parses your codebase with tree-sitter, stores every symbol, edge,
 and file in a local SQLite database (FTS5), and exposes the graph to

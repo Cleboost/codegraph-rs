@@ -117,13 +117,27 @@ fn cmd_default(root: &Utf8Path) -> Result<()> {
     if !db_path(root).exists() {
         use console::style;
         eprintln!();
-        eprintln!("  {} {}", style("CodeGraph").bold().cyan(), style(format!("v{}", env!("CARGO_PKG_VERSION"))).dim());
+        eprintln!(
+            "  {} {}",
+            style("CodeGraph").bold().cyan(),
+            style(format!("v{}", env!("CARGO_PKG_VERSION"))).dim()
+        );
         eprintln!("  ━");
-        eprintln!("  ⚠️  {}", style("Workspace not initialized").bold().yellow());
+        eprintln!(
+            "  ⚠️  {}",
+            style("Workspace not initialized").bold().yellow()
+        );
         eprintln!("     No active database found in this directory.");
         eprintln!();
-        eprintln!("     {} {}", style("Root:").dim(), style(root.as_str()).italic());
-        eprintln!("     👉 Run {} to set up CodeGraph!", style("codegraph init").bold().green());
+        eprintln!(
+            "     {} {}",
+            style("Root:").dim(),
+            style(root.as_str()).italic()
+        );
+        eprintln!(
+            "     👉 Run {} to set up CodeGraph!",
+            style("codegraph init").bold().green()
+        );
         eprintln!();
         std::process::exit(1);
     }
@@ -132,21 +146,43 @@ fn cmd_default(root: &Utf8Path) -> Result<()> {
     let db = Db::open(&db_path(root))?;
     let s = db.stats()?;
     eprintln!();
-    eprintln!("  {} {}", style("CodeGraph").bold().cyan(), style(format!("v{}", env!("CARGO_PKG_VERSION"))).dim());
+    eprintln!(
+        "  {} {}",
+        style("CodeGraph").bold().cyan(),
+        style(format!("v{}", env!("CARGO_PKG_VERSION"))).dim()
+    );
     eprintln!("  ━");
-    eprintln!("  ✨  {}", style("Workspace Active & Indexed").bold().green());
+    eprintln!(
+        "  ✨  {}",
+        style("Workspace Active & Indexed").bold().green()
+    );
     eprintln!();
     eprintln!("     📊  {}", style("Database Statistics:").bold());
     eprintln!("         • {} indexed files", style(s.files).cyan());
     eprintln!("         • {} nodes (symbols)", style(s.nodes).cyan());
     eprintln!("         • {} edges (references)", style(s.edges).cyan());
-    eprintln!("         • {} db size", style(format!("{} KB", s.size_bytes / 1024)).dim());
+    eprintln!(
+        "         • {} db size",
+        style(format!("{} KB", s.size_bytes / 1024)).dim()
+    );
     eprintln!();
     eprintln!("     🚀  {}", style("Quick Commands:").bold());
-    eprintln!("         • {}           Check status and statistics", style("codegraph status").green());
-    eprintln!("         • {}     Search for symbols in the codebase", style("codegraph query <text>").green());
-    eprintln!("         • {}             Incremental sync of changed files", style("codegraph sync").green());
-    eprintln!("         • {}            Configure/install AI agent integrations", style("codegraph install").green());
+    eprintln!(
+        "         • {}           Check status and statistics",
+        style("codegraph status").green()
+    );
+    eprintln!(
+        "         • {}     Search for symbols in the codebase",
+        style("codegraph query <text>").green()
+    );
+    eprintln!(
+        "         • {}             Incremental sync of changed files",
+        style("codegraph sync").green()
+    );
+    eprintln!(
+        "         • {}            Configure/install AI agent integrations",
+        style("codegraph install").green()
+    );
     eprintln!();
     Ok(())
 }
@@ -159,13 +195,27 @@ fn ensure_initialized(root: &Utf8Path) -> Result<()> {
     if !db_path(root).exists() {
         use console::style;
         eprintln!();
-        eprintln!("  {} {}", style("CodeGraph").bold().cyan(), style(format!("v{}", env!("CARGO_PKG_VERSION"))).dim());
+        eprintln!(
+            "  {} {}",
+            style("CodeGraph").bold().cyan(),
+            style(format!("v{}", env!("CARGO_PKG_VERSION"))).dim()
+        );
         eprintln!("  ━");
-        eprintln!("  ⚠️  {}", style("Workspace not initialized").bold().yellow());
+        eprintln!(
+            "  ⚠️  {}",
+            style("Workspace not initialized").bold().yellow()
+        );
         eprintln!("     No active database found in this directory.");
         eprintln!();
-        eprintln!("     {} {}", style("Root:").dim(), style(root.as_str()).italic());
-        eprintln!("     👉 Run {} to set up CodeGraph!", style("codegraph init").bold().green());
+        eprintln!(
+            "     {} {}",
+            style("Root:").dim(),
+            style(root.as_str()).italic()
+        );
+        eprintln!(
+            "     👉 Run {} to set up CodeGraph!",
+            style("codegraph init").bold().green()
+        );
         eprintln!();
         std::process::exit(1);
     }

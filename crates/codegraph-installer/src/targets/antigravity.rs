@@ -3,9 +3,7 @@
 //! Global:    ~/.gemini/antigravity-cli/mcp_config.json
 //! Workspace: .agents/mcp_config.json
 
-use crate::{
-    targets::jsonutil, AgentTarget, DetectStatus, InstallOpts, InstallReport,
-};
+use crate::{targets::jsonutil, AgentTarget, DetectStatus, InstallOpts, InstallReport};
 use anyhow::Result;
 use camino::Utf8PathBuf;
 use serde_json::{json, Value};
@@ -71,7 +69,9 @@ impl AgentTarget for AntigravityTarget {
 
     fn install(&self, opts: &InstallOpts) -> Result<InstallReport> {
         if opts.global {
-            return Ok(InstallReport::Skipped("Global install not supported for Antigravity".into()));
+            return Ok(InstallReport::Skipped(
+                "Global install not supported for Antigravity".into(),
+            ));
         }
         let mcp = self
             .mcp_path(opts)

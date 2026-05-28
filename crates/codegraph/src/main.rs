@@ -25,7 +25,7 @@ struct Cli {
 
     /// Print version.
     #[arg(short = 'v', long = "version", action = clap::ArgAction::Version)]
-    version: bool,
+    version: Option<bool>,
 
     #[command(subcommand)]
     cmd: Option<Cmd>,
@@ -115,7 +115,17 @@ fn db_path(root: &Utf8Path) -> Utf8PathBuf {
 
 fn ensure_initialized(root: &Utf8Path) -> Result<()> {
     if !db_path(root).exists() {
-        return Err(anyhow!("not initialized: run `codegraph init` in {}", root));
+        use console::style;
+        eprintln!();
+        eprintln!("  {} {}", style("CodeGraph").bold().cyan(), style(format!("v{}", env!("CARGO_PKG_VERSION"))).dim());
+        eprintln!("  ━");
+        eprintln!("  ⚠️  {}", style("Workspace not initialized").bold().yellow());
+        eprintln!("     No active database found in this directory.");
+        eprintln!();
+        eprintln!("     {} {}", style("Root:").dim(), style(root.as_str()).italic());
+        eprintln!("     👉 Run {} to set up CodeGraph!", style("codegraph init").bold().green());
+        eprintln!();
+        std::process::exit(1);
     }
     Ok(())
 }

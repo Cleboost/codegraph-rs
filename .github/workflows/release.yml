@@ -3,11 +3,6 @@ name: Release
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Tag (e.g. v0.1.0). Required for manual runs."
-        required: false
 
 permissions:
   contents: write
@@ -79,7 +74,7 @@ jobs:
     name: GitHub Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    if: startsWith(github.ref, 'refs/tags/v')
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
       version: ${{ steps.tag.outputs.version }}
@@ -94,12 +89,7 @@ jobs:
         id: tag
         run: |
           set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            tag="${{ inputs.tag }}"
-            [ -n "$tag" ] || { echo "manual run requires inputs.tag" >&2; exit 1; }
-          else
-            tag="${GITHUB_REF#refs/tags/}"
-          fi
+          tag="${GITHUB_REF#refs/tags/}"
           [[ "$tag" =~ ^v ]] || { echo "tag must start with v" >&2; exit 1; }
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"

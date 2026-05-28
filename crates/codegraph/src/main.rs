@@ -12,11 +12,20 @@ const CODEGRAPH_DIR: &str = ".codegraph";
 const DB_FILE: &str = "db.sqlite";
 
 #[derive(Parser, Debug)]
-#[command(name = "codegraph", version, about = "Local-first code intelligence")]
+#[command(
+    name = "codegraph",
+    version,
+    about = "Local-first code intelligence",
+    disable_version_flag = true
+)]
 struct Cli {
     /// Workspace root (default: current dir).
     #[arg(long, global = true)]
     path: Option<Utf8PathBuf>,
+
+    /// Print version.
+    #[arg(short = 'v', long = "version", action = clap::ArgAction::Version)]
+    version: bool,
 
     #[command(subcommand)]
     cmd: Option<Cmd>,

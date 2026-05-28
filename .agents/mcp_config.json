@@ -1,13 +1,13 @@
 {
   "mcpServers": {
     "codegraph": {
+      "command": "./target/debug/codegraph",
       "args": [
         "serve",
         "--mcp",
         "--path",
-        "/home/cleboost/Code/codegraph"
-      ],
-      "command": "/home/cleboost/Code/codegraph/target/debug/codegraph"
+        "."
+      ]
     }
   }
 }

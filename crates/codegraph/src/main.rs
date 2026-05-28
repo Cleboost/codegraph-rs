@@ -88,9 +88,13 @@ fn main() -> Result<()> {
             .map_err(|p| anyhow!("non-UTF8 cwd: {}", p.display()))?,
     };
 
-    let cmd = cli
-        .cmd
-        .ok_or_else(|| anyhow!("no subcommand. Try `codegraph init`"))?;
+    let cmd = match cli.cmd {
+        Some(c) => c,
+        None => {
+            cmd_default(&root)?;
+            return Ok(());
+        }
+    };
     match cmd {
         Cmd::Init { no_index } => cmd_init(&root, !no_index),
         Cmd::Uninit => cmd_uninit(&root),
@@ -107,6 +111,44 @@ fn main() -> Result<()> {
         Cmd::Serve { mcp } => cmd_serve(&root, mcp),
         Cmd::Install => cmd_agents(&root),
     }
+}
+
+fn cmd_default(root: &Utf8Path) -> Result<()> {
+    if !db_path(root).exists() {
+        use console::style;
+        eprintln!();
+        eprintln!("  {} {}", style("CodeGraph").bold().cyan(), style(format!("v{}", env!("CARGO_PKG_VERSION"))).dim());
+        eprintln!("  ━");
+        eprintln!("  ⚠️  {}", style("Workspace not initialized").bold().yellow());
+        eprintln!("     No active database found in this directory.");
+        eprintln!();
+        eprintln!("     {} {}", style("Root:").dim(), style(root.as_str()).italic());
+        eprintln!("     👉 Run {} to set up CodeGraph!", style("codegraph init").bold().green());
+        eprintln!();
+        std::process::exit(1);
+    }
+
+    use console::style;
+    let db = Db::open(&db_path(root))?;
+    let s = db.stats()?;
+    eprintln!();
+    eprintln!("  {} {}", style("CodeGraph").bold().cyan(), style(format!("v{}", env!("CARGO_PKG_VERSION"))).dim());
+    eprintln!("  ━");
+    eprintln!("  ✨  {}", style("Workspace Active & Indexed").bold().green());
+    eprintln!();
+    eprintln!("     📊  {}", style("Database Statistics:").bold());
+    eprintln!("         • {} indexed files", style(s.files).cyan());
+    eprintln!("         • {} nodes (symbols)", style(s.nodes).cyan());
+    eprintln!("         • {} edges (references)", style(s.edges).cyan());
+    eprintln!("         • {} db size", style(format!("{} KB", s.size_bytes / 1024)).dim());
+    eprintln!();
+    eprintln!("     🚀  {}", style("Quick Commands:").bold());
+    eprintln!("         • {}           Check status and statistics", style("codegraph status").green());
+    eprintln!("         • {}     Search for symbols in the codebase", style("codegraph query <text>").green());
+    eprintln!("         • {}             Incremental sync of changed files", style("codegraph sync").green());
+    eprintln!("         • {}            Configure/install AI agent integrations", style("codegraph install").green());
+    eprintln!();
+    Ok(())
 }
 
 fn db_path(root: &Utf8Path) -> Utf8PathBuf {

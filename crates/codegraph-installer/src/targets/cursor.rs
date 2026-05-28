@@ -11,11 +11,11 @@ impl CursorTarget {
     fn mcp_path(&self, opts: &InstallOpts) -> Option<Utf8PathBuf> {
         if opts.global {
             let home = dirs::home_dir()?;
-            Utf8PathBuf::from_path_buf(home.join(".cursor").join("mcp.json")).ok()
+            Utf8PathBuf::from_path_buf(home.join(".cursor").join("mcp_config.json")).ok()
         } else {
             opts.project_root
                 .as_ref()
-                .map(|r| r.join(".cursor").join("mcp.json"))
+                .map(|r| r.join(".cursor").join("mcp_config.json"))
         }
     }
     fn rule_path(&self, opts: &InstallOpts) -> Option<Utf8PathBuf> {
@@ -76,7 +76,7 @@ impl AgentTarget for CursorTarget {
         {
             let obj = v
                 .as_object_mut()
-                .ok_or_else(|| anyhow::anyhow!("mcp.json not an object"))?;
+                .ok_or_else(|| anyhow::anyhow!("mcp_config.json not an object"))?;
             let servers = obj
                 .entry("mcpServers")
                 .or_insert_with(|| Value::Object(Default::default()));

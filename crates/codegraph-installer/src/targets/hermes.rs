@@ -1,4 +1,4 @@
-//! Hermes — JSON config at `~/.hermes/mcp.json`.
+//! Hermes — JSON config at `~/.hermes/mcp_config.json`.
 //! Mirrors Claude wiring; adjust as Hermes spec evolves.
 
 use crate::{
@@ -14,11 +14,11 @@ impl HermesTarget {
     fn mcp_path(&self, opts: &InstallOpts) -> Option<Utf8PathBuf> {
         if opts.global {
             let home = dirs::home_dir()?;
-            Utf8PathBuf::from_path_buf(home.join(".hermes").join("mcp.json")).ok()
+            Utf8PathBuf::from_path_buf(home.join(".hermes").join("mcp_config.json")).ok()
         } else {
             opts.project_root
                 .as_ref()
-                .map(|r| r.join(".hermes").join("mcp.json"))
+                .map(|r| r.join(".hermes").join("mcp_config.json"))
         }
     }
     fn instructions_path(&self, opts: &InstallOpts) -> Option<Utf8PathBuf> {

@@ -200,6 +200,7 @@ dependencies = [
  "console",
  "dialoguer",
  "dirs",
+ "ignore",
  "notify",
  "notify-debouncer-full",
  "tokio",

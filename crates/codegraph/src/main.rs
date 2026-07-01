@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 mod watcher;
 
-const CODEGRAPH_DIR: &str = ".codegraph";
+pub(crate) const CODEGRAPH_DIR: &str = ".codegraph";
 const DB_FILE: &str = "db.sqlite";
 
 #[derive(Parser, Debug)]

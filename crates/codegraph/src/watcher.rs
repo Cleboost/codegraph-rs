@@ -2,9 +2,10 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use codegraph_db::Db;
 use codegraph_extract::Orchestrator;
-use ignore::gitignore::GitignoreBuilder;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use notify::RecursiveMode;
 use notify_debouncer_full::{new_debouncer, DebouncedEvent};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -42,19 +43,19 @@ fn run(root: Utf8PathBuf, db: Arc<Db>) -> Result<()> {
 
     let orch = Orchestrator::with_registry();
     while let Ok(events) = rx.recv() {
-        let relevant = events.iter().any(|event| {
-            event.paths.iter().any(|p| {
-                let under_ignored_dir = ignored_dirs.iter().any(|dir| p.starts_with(dir.as_std_path()));
-                if under_ignored_dir {
-                    return false;
-                }
-                !gitignore.matched(p, p.is_dir()).is_ignore()
-            })
-        });
-        if !relevant {
+        let mut batch = events;
+        // Coalesce any batches that arrive while we're about to process one -
+        // avoids back-to-back sync passes when the debouncer fires repeatedly
+        // in quick succession (e.g. during a large rescan).
+        while let Ok(more) = rx.try_recv() {
+            batch.extend(more);
+        }
+
+        let paths = relevant_paths(&batch, &root, &ignored_dirs, &gitignore);
+        if paths.is_empty() {
             continue;
         }
-        match orch.sync(&root, &db) {
+        match orch.sync_paths(&db, &paths) {
             Ok(s) if s.files > 0 => {
                 tracing::info!("watch sync: {} files, {} edges", s.files, s.edges)
             }
@@ -63,4 +64,33 @@ fn run(root: Utf8PathBuf, db: Arc<Db>) -> Result<()> {
         }
     }
     Ok(())
+}
+
+fn relevant_paths(
+    events: &[DebouncedEvent],
+    root: &Utf8PathBuf,
+    ignored_dirs: &[Utf8PathBuf],
+    gitignore: &Gitignore,
+) -> Vec<Utf8PathBuf> {
+    let mut out = BTreeSet::new();
+    for event in events {
+        for p in &event.paths {
+            if ignored_dirs
+                .iter()
+                .any(|dir| p.starts_with(dir.as_std_path()))
+            {
+                continue;
+            }
+            if gitignore.matched(p, p.is_dir()).is_ignore() {
+                continue;
+            }
+            let Ok(p) = Utf8PathBuf::from_path_buf(p.clone()) else {
+                continue;
+            };
+            if p.starts_with(root) {
+                out.insert(p);
+            }
+        }
+    }
+    out.into_iter().collect()
 }

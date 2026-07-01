@@ -1,5 +1,5 @@
 use crate::{walker, ExtractResult, Extractor};
-use camino::Utf8Path;
+use camino::{Utf8Path, Utf8PathBuf};
 use codegraph_core::Result;
 use codegraph_db::{Db, EdgeDraft, FileRow, NodeDraft};
 use codegraph_resolve::{PendingCallRow, Resolver};
@@ -41,7 +41,40 @@ impl Orchestrator {
             .par_iter()
             .filter_map(|fm| parse_one(fm).ok().flatten())
             .collect();
+        self.apply(db, parsed)
+    }
 
+    /// Sync only the given paths instead of walking the whole tree. Used by the
+    /// watcher so that a burst of filesystem events costs O(changed files),
+    /// not O(repo size).
+    pub fn sync_paths(&self, db: &Db, paths: &[Utf8PathBuf]) -> Result<ExtractStats> {
+        let ext_map = walker::build_ext_map(&self.extractors);
+        let mut matches = Vec::new();
+        for p in paths {
+            if !p.as_std_path().is_file() {
+                // Deleted (or not a regular file): drop it from the index if present.
+                if let Ok(Some(existing)) = db.file_by_path(p.as_str()) {
+                    if let Some(eid) = existing.id {
+                        db.delete_file_cascade(eid)?;
+                    }
+                }
+                continue;
+            }
+            if let Some(extractor) = walker::match_extractor(p, &ext_map) {
+                matches.push(walker::FileMatch {
+                    path: p.clone(),
+                    extractor,
+                });
+            }
+        }
+        let parsed: Vec<_> = matches
+            .par_iter()
+            .filter_map(|fm| parse_one(fm).ok().flatten())
+            .collect();
+        self.apply(db, parsed)
+    }
+
+    fn apply(&self, db: &Db, parsed: Vec<Parsed>) -> Result<ExtractStats> {
         let mut stats = ExtractStats::default();
         let mut all_pending: Vec<PendingCallRow> = Vec::new();
         for Parsed { row, result } in parsed {

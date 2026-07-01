@@ -9,13 +9,28 @@ pub struct FileMatch {
     pub extractor: Arc<dyn Extractor>,
 }
 
-pub fn walk(root: &Utf8Path, extractors: &[Arc<dyn Extractor>]) -> Vec<FileMatch> {
-    let mut ext_map: HashMap<&'static str, Arc<dyn Extractor>> = HashMap::new();
+pub type ExtMap = HashMap<&'static str, Arc<dyn Extractor>>;
+
+pub fn build_ext_map(extractors: &[Arc<dyn Extractor>]) -> ExtMap {
+    let mut ext_map: ExtMap = HashMap::new();
     for ex in extractors {
         for e in ex.extensions() {
             ext_map.insert(*e, ex.clone());
         }
     }
+    ext_map
+}
+
+/// Match a single path against the extractor registry, without walking the tree.
+/// Used for incremental (watcher-driven) syncs where the caller already knows
+/// which paths changed.
+pub fn match_extractor(path: &Utf8Path, ext_map: &ExtMap) -> Option<Arc<dyn Extractor>> {
+    let ext = path.extension()?;
+    ext_map.get(ext).cloned()
+}
+
+pub fn walk(root: &Utf8Path, extractors: &[Arc<dyn Extractor>]) -> Vec<FileMatch> {
+    let ext_map = build_ext_map(extractors);
 
     let mut out = Vec::new();
     let walker = WalkBuilder::new(root)

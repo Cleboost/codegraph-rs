@@ -1,3 +1,4 @@
+use crate::config::ExtractConfig;
 use crate::{walker, ExtractResult, Extractor};
 use camino::{Utf8Path, Utf8PathBuf};
 use codegraph_core::Result;
@@ -36,7 +37,8 @@ impl Orchestrator {
     }
 
     pub fn sync(&self, root: &Utf8Path, db: &Db) -> Result<ExtractStats> {
-        let files = walker::walk(root, &self.extractors);
+        let config = ExtractConfig::load(root);
+        let files = walker::walk(root, &self.extractors, &config);
         let results: Vec<_> = files.par_iter().map(|fm| parse_one(fm, db)).collect();
         let mut parsed = Vec::with_capacity(results.len());
         let mut skipped = 0u64;
@@ -55,8 +57,10 @@ impl Orchestrator {
     /// Sync only the given paths instead of walking the whole tree. Used by the
     /// watcher so that a burst of filesystem events costs O(changed files),
     /// not O(repo size).
-    pub fn sync_paths(&self, db: &Db, paths: &[Utf8PathBuf]) -> Result<ExtractStats> {
+    pub fn sync_paths(&self, root: &Utf8Path, db: &Db, paths: &[Utf8PathBuf]) -> Result<ExtractStats> {
+        let config = ExtractConfig::load(root);
         let ext_map = walker::build_ext_map(&self.extractors);
+        let opts = walker::walk_options(&self.extractors, &config, root);
         let mut matches = Vec::new();
         for p in paths {
             if !p.as_std_path().is_file() {
@@ -68,7 +72,7 @@ impl Orchestrator {
                 }
                 continue;
             }
-            if let Some(extractor) = walker::match_extractor(p, &ext_map) {
+            if let Some(extractor) = walker::match_extractor(p, &ext_map, &opts) {
                 matches.push(walker::FileMatch {
                     path: p.clone(),
                     extractor,

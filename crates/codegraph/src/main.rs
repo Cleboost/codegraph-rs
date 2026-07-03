@@ -231,6 +231,10 @@ fn cmd_init(root: &Utf8Path, do_index: bool) -> Result<()> {
     std::fs::create_dir_all(&dir)?;
     std::fs::write(dir.join(".gitignore"), "*\n")?;
     std::fs::write(dir.join("version"), env!("CARGO_PKG_VERSION"))?;
+    let config_path = dir.join("config.toml");
+    if !config_path.exists() {
+        std::fs::write(&config_path, codegraph_extract::DEFAULT_CONFIG_TOML)?;
+    }
     let db = Db::open(&db_path(root))?;
     eprintln!("initialized {}", dir);
 

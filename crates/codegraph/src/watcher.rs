@@ -55,7 +55,7 @@ fn run(root: Utf8PathBuf, db: Arc<Db>) -> Result<()> {
         if paths.is_empty() {
             continue;
         }
-        match orch.sync_paths(&db, &paths) {
+        match orch.sync_paths(&root, &db, &paths) {
             Ok(s) if s.files > 0 => {
                 tracing::info!("watch sync: {} files, {} edges", s.files, s.edges)
             }

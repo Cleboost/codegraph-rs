@@ -200,12 +200,30 @@ A `.codegraph/` directory is created next to your project:
 ```
 .codegraph/
   db.sqlite        SQLite v1 (WAL mode, FTS5)
+  config.toml      Language overrides (see below)
   .gitignore       Pre-filled so the index is never committed
   version          Codegraph version that created the directory
 ```
 
 Add a `.codegraphignore` file at the workspace root to exclude additional
 paths beyond your `.gitignore`. Same syntax.
+
+### C vs C++ headers (`.h`)
+
+By default, `.h` files are resolved automatically:
+
+- **C++ project** (`.cpp`/`.hpp` present, no `.c`) → parsed as C++
+- **C project** (`.c` present, no C++ sources) → parsed as C
+- **Mixed C/C++** → each `.h` is inspected for C++ syntax (`namespace`, `class`, `template`, …)
+
+Override in `.codegraph/config.toml`:
+
+```toml
+[languages]
+headers = "auto"   # "auto" (default), "c", or "cpp"
+```
+
+After changing this setting, run `codegraph index` to re-index headers.
 
 ## Why Rust?
 

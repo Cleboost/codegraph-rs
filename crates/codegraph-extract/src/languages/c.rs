@@ -22,7 +22,7 @@ fn import_path(n: &Node, src: &[u8]) -> Option<String> {
 
 pub static SPEC: LangSpec = LangSpec {
     language_name: "c",
-    extensions: &["c", "h"],
+    extensions: &["c"],
     ts_language,
     decls: &[
         ("function_definition", NodeKind::Function),

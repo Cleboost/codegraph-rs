@@ -1,9 +1,11 @@
 //! Tree-sitter extraction orchestrator + per-language extractors.
 
+pub mod config;
 pub mod languages;
 mod orchestrator;
 mod walker;
 
+pub use config::{ExtractConfig, HeaderLanguage, DEFAULT_CONFIG_TOML};
 pub use orchestrator::{ExtractStats, Orchestrator};
 
 use codegraph_core::{Error, NodeKind, Result};

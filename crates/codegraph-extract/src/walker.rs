@@ -29,7 +29,10 @@ pub fn build_ext_map(extractors: &[Arc<dyn Extractor>]) -> ExtMap {
     ext_map
 }
 
-fn find_extractor<'a>(extractors: &'a [Arc<dyn Extractor>], lang: &str) -> Option<&'a Arc<dyn Extractor>> {
+fn find_extractor<'a>(
+    extractors: &'a [Arc<dyn Extractor>],
+    lang: &str,
+) -> Option<&'a Arc<dyn Extractor>> {
     extractors.iter().find(|e| e.language() == lang)
 }
 
@@ -54,7 +57,11 @@ pub fn walk_options<'a>(
 /// Match a single path against the extractor registry, without walking the tree.
 /// Used for incremental (watcher-driven) syncs where the caller already knows
 /// which paths changed.
-pub fn match_extractor(path: &Utf8Path, ext_map: &ExtMap, opts: &WalkOptions<'_>) -> Option<Arc<dyn Extractor>> {
+pub fn match_extractor(
+    path: &Utf8Path,
+    ext_map: &ExtMap,
+    opts: &WalkOptions<'_>,
+) -> Option<Arc<dyn Extractor>> {
     let ext = path.extension()?;
     if ext == "h" {
         return resolve_header_extractor(path, opts);
@@ -62,7 +69,11 @@ pub fn match_extractor(path: &Utf8Path, ext_map: &ExtMap, opts: &WalkOptions<'_>
     ext_map.get(ext).cloned()
 }
 
-pub fn walk(root: &Utf8Path, extractors: &[Arc<dyn Extractor>], config: &ExtractConfig) -> Vec<FileMatch> {
+pub fn walk(
+    root: &Utf8Path,
+    extractors: &[Arc<dyn Extractor>],
+    config: &ExtractConfig,
+) -> Vec<FileMatch> {
     let ext_map = build_ext_map(extractors);
     let opts = walk_options(extractors, config, root);
 

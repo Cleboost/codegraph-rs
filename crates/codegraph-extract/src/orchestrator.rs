@@ -57,7 +57,12 @@ impl Orchestrator {
     /// Sync only the given paths instead of walking the whole tree. Used by the
     /// watcher so that a burst of filesystem events costs O(changed files),
     /// not O(repo size).
-    pub fn sync_paths(&self, root: &Utf8Path, db: &Db, paths: &[Utf8PathBuf]) -> Result<ExtractStats> {
+    pub fn sync_paths(
+        &self,
+        root: &Utf8Path,
+        db: &Db,
+        paths: &[Utf8PathBuf],
+    ) -> Result<ExtractStats> {
         let config = ExtractConfig::load(root);
         let ext_map = walker::build_ext_map(&self.extractors);
         let opts = walker::walk_options(&self.extractors, &config, root);

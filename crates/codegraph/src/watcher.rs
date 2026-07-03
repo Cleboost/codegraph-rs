@@ -74,6 +74,9 @@ fn relevant_paths(
 ) -> Vec<Utf8PathBuf> {
     let mut out = BTreeSet::new();
     for event in events {
+        if event.need_rescan() {
+            continue;
+        }
         for p in &event.paths {
             if ignored_dirs
                 .iter()

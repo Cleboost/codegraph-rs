@@ -93,3 +93,27 @@ fn sync_skips_unchanged() {
     assert_eq!(s2.files, 0, "no new files should be indexed");
     assert!(s2.skipped >= 2);
 }
+
+#[test]
+fn sync_paths_skips_mtime_only_touch() {
+    use std::time::{Duration, SystemTime};
+
+    let (_keep, db) = open();
+    let orch = Orchestrator::with_registry();
+    let fixture = Utf8PathBuf::from_path_buf(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/sample.rs"),
+    )
+    .unwrap();
+
+    orch.sync_paths(&db, std::slice::from_ref(&fixture)).unwrap();
+    let indexed = db.stats().unwrap().files;
+    assert!(indexed >= 1, "fixture should be indexed");
+
+    let later = SystemTime::now() + Duration::from_secs(5);
+    filetime::set_file_mtime(fixture.as_std_path(), filetime::FileTime::from_system_time(later))
+        .unwrap();
+
+    let stats = orch.sync_paths(&db, std::slice::from_ref(&fixture)).unwrap();
+    assert_eq!(stats.files, 0, "mtime-only touch must not re-index");
+    assert!(stats.skipped >= 1, "expected skip, got {:?}", stats);
+}

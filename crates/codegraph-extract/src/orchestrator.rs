@@ -37,11 +37,19 @@ impl Orchestrator {
 
     pub fn sync(&self, root: &Utf8Path, db: &Db) -> Result<ExtractStats> {
         let files = walker::walk(root, &self.extractors);
-        let parsed: Vec<_> = files
-            .par_iter()
-            .filter_map(|fm| parse_one(fm).ok().flatten())
-            .collect();
-        self.apply(db, parsed)
+        let results: Vec<_> = files.par_iter().map(|fm| parse_one(fm, db)).collect();
+        let mut parsed = Vec::with_capacity(results.len());
+        let mut skipped = 0u64;
+        for r in results {
+            match r {
+                Ok(None) => skipped += 1,
+                Ok(Some(p)) => parsed.push(p),
+                Err(_) => {}
+            }
+        }
+        let mut stats = self.apply(db, parsed)?;
+        stats.skipped += skipped;
+        Ok(stats)
     }
 
     /// Sync only the given paths instead of walking the whole tree. Used by the
@@ -67,11 +75,22 @@ impl Orchestrator {
                 });
             }
         }
-        let parsed: Vec<_> = matches
+        let results: Vec<_> = matches
             .par_iter()
-            .filter_map(|fm| parse_one(fm).ok().flatten())
+            .map(|fm| parse_one(fm, db))
             .collect();
-        self.apply(db, parsed)
+        let mut parsed = Vec::with_capacity(results.len());
+        let mut skipped = 0u64;
+        for r in results {
+            match r {
+                Ok(None) => skipped += 1,
+                Ok(Some(p)) => parsed.push(p),
+                Err(_) => {}
+            }
+        }
+        let mut apply_stats = self.apply(db, parsed)?;
+        apply_stats.skipped += skipped;
+        Ok(apply_stats)
     }
 
     fn apply(&self, db: &Db, parsed: Vec<Parsed>) -> Result<ExtractStats> {
@@ -136,7 +155,30 @@ struct Parsed {
     result: ExtractResult,
 }
 
-fn parse_one(fm: &walker::FileMatch) -> Result<Option<Parsed>> {
+fn file_mtime(meta: &std::fs::Metadata) -> i64 {
+    meta.modified()
+        .ok()
+        .and_then(|m| m.duration_since(SystemTime::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+/// Parse a single file if its content changed since the last index.
+///
+/// Watcher-driven syncs often see mtime-only updates (IDE saves, `touch`, …)
+/// with identical bytes. Skipping tree-sitter when metadata or sha256 match
+/// avoids sustained multi-core CPU during large no-op batches.
+fn parse_one(fm: &walker::FileMatch, db: &Db) -> Result<Option<Parsed>> {
+    let meta = std::fs::metadata(fm.path.as_std_path())?;
+    let mtime = file_mtime(&meta);
+    let size = meta.len();
+
+    if let Ok(Some(existing)) = db.file_by_path(fm.path.as_str()) {
+        if existing.mtime == mtime && existing.size == size {
+            return Ok(None);
+        }
+    }
+
     let bytes = match std::fs::read(fm.path.as_std_path()) {
         Ok(b) if b.len() < 4 * 1024 * 1024 => b,
         _ => return Ok(None),
@@ -148,13 +190,15 @@ fn parse_one(fm: &walker::FileMatch) -> Result<Option<Parsed>> {
     let mut h = Sha256::new();
     h.update(&bytes);
     let sha = hex::encode(h.finalize());
-    let meta = std::fs::metadata(fm.path.as_std_path())?;
-    let mtime = meta
-        .modified()
-        .ok()
-        .and_then(|m| m.duration_since(SystemTime::UNIX_EPOCH).ok())
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
+
+    if let Ok(Some(existing)) = db.file_by_path(fm.path.as_str()) {
+        if existing.sha256 == sha {
+            if existing.mtime != mtime || existing.size != size {
+                db.update_file_metadata(fm.path.as_str(), mtime, size)?;
+            }
+            return Ok(None);
+        }
+    }
 
     let result = fm.extractor.extract(source)?;
     let row = FileRow {
@@ -162,7 +206,7 @@ fn parse_one(fm: &walker::FileMatch) -> Result<Option<Parsed>> {
         path: fm.path.clone(),
         language: fm.extractor.language().to_string(),
         sha256: sha,
-        size: bytes.len() as u64,
+        size: size as u64,
         mtime,
         indexed_at: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)

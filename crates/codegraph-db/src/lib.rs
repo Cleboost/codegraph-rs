@@ -137,6 +137,11 @@ impl Db {
         queries::file_by_path(&c, path)
     }
 
+    pub fn update_file_metadata(&self, path: &str, mtime: i64, size: u64) -> Result<()> {
+        let c = self.conn.lock();
+        queries::update_file_metadata(&c, path, mtime, size)
+    }
+
     pub fn file_by_id(&self, id: i64) -> Result<Option<FileRow>> {
         let c = self.conn.lock();
         queries::file_by_id(&c, id)

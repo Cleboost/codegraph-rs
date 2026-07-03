@@ -41,6 +41,20 @@ pub(crate) fn upsert_file(tx: &Transaction, f: &FileRow) -> Result<i64> {
     Ok(id)
 }
 
+pub(crate) fn update_file_metadata(
+    c: &Connection,
+    path: &str,
+    mtime: i64,
+    size: u64,
+) -> Result<()> {
+    c.execute(
+        "UPDATE files SET mtime=?1, size=?2 WHERE path=?3",
+        params![mtime, size as i64, path],
+    )
+    .map_err(db_err)?;
+    Ok(())
+}
+
 pub(crate) fn file_by_path(c: &Connection, path: &str) -> Result<Option<FileRow>> {
     c.query_row(
         "SELECT id, path, language, sha256, size, mtime, indexed_at FROM files WHERE path=?1",

@@ -252,6 +252,7 @@ dependencies = [
  "codegraph-db",
  "codegraph-resolve",
  "crossbeam-channel",
+ "filetime",
  "hex",
  "ignore",
  "rayon",

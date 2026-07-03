@@ -75,10 +75,7 @@ impl Orchestrator {
                 });
             }
         }
-        let results: Vec<_> = matches
-            .par_iter()
-            .map(|fm| parse_one(fm, db))
-            .collect();
+        let results: Vec<_> = matches.par_iter().map(|fm| parse_one(fm, db)).collect();
         let mut parsed = Vec::with_capacity(results.len());
         let mut skipped = 0u64;
         for r in results {

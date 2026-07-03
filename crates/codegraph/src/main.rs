@@ -54,7 +54,11 @@ enum Cmd {
         limit: u32,
     },
     /// List indexed files under a path prefix.
-    Files { path: Option<String> },
+    Files {
+        /// Path prefix filter (indexed file paths starting with this value).
+        #[arg(value_name = "PATH")]
+        prefix: Option<String>,
+    },
     /// Build markdown context for a symbol.
     Context {
         target: String,
@@ -102,7 +106,7 @@ fn main() -> Result<()> {
         Cmd::Sync => cmd_sync(&root),
         Cmd::Status => cmd_status(&root),
         Cmd::Query { query, limit } => cmd_query(&root, &query, limit),
-        Cmd::Files { path } => cmd_files(&root, path.as_deref()),
+        Cmd::Files { prefix } => cmd_files(&root, prefix.as_deref()),
         Cmd::Context {
             target,
             depth,
@@ -394,10 +398,15 @@ fn cmd_query(root: &Utf8Path, q: &str, limit: u32) -> Result<()> {
 }
 
 fn cmd_files(root: &Utf8Path, prefix: Option<&str>) -> Result<()> {
+    use std::io::Write;
+
     ensure_initialized(root)?;
     let db = Db::open(&db_path(root))?;
+    let mut out = std::io::stdout().lock();
     for f in db.files_under(prefix.unwrap_or(""))? {
-        println!("{}  ({})", f.path, f.language);
+        if writeln!(out, "{}  ({})", f.path, f.language).is_err() {
+            break;
+        }
     }
     Ok(())
 }

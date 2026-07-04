@@ -148,3 +148,42 @@ fn nodes_by_name_returns_all() {
     .unwrap();
     assert_eq!(db.nodes_by_name("foo").unwrap().len(), 2);
 }
+
+#[test]
+fn files_under_resolves_relative_prefix_against_workspace_root() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+    let db_path = root.join(".codegraph").join("db.sqlite");
+    let db = Db::open(&db_path).unwrap();
+
+    let file_path = root.join("src/foo.ts");
+    db.upsert_file(&FileRow {
+        id: None,
+        path: file_path.clone(),
+        language: "typescript".into(),
+        sha256: "deadbeef".into(),
+        size: 100,
+        mtime: 0,
+        indexed_at: 0,
+    })
+    .unwrap();
+    db.upsert_file(&FileRow {
+        id: None,
+        path: root.join("lib/bar.ts"),
+        language: "typescript".into(),
+        sha256: "cafebabe".into(),
+        size: 100,
+        mtime: 0,
+        indexed_at: 0,
+    })
+    .unwrap();
+
+    assert_eq!(db.files_under("./src/").unwrap().len(), 1);
+    assert_eq!(db.files_under("src").unwrap().len(), 1);
+    assert_eq!(
+        db.files_under(file_path.as_str()).unwrap()[0].path,
+        file_path
+    );
+    assert_eq!(db.files_under("lib").unwrap().len(), 1);
+    assert_eq!(db.files_under("").unwrap().len(), 2);
+}

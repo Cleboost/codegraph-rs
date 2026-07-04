@@ -56,6 +56,15 @@ impl Db {
         &self.path
     }
 
+    /// Project root when the DB lives at `{root}/.codegraph/db.sqlite`.
+    pub fn workspace_root(&self) -> Option<&Utf8Path> {
+        let codegraph_dir = self.path.parent()?;
+        if codegraph_dir.file_name() != Some(".codegraph") {
+            return None;
+        }
+        codegraph_dir.parent()
+    }
+
     pub fn schema_version(&self) -> Result<u32> {
         let c = self.conn.lock();
         queries::schema_version(&c)
@@ -128,8 +137,9 @@ impl Db {
     }
 
     pub fn files_under(&self, prefix: &str) -> Result<Vec<FileRow>> {
+        let prefix = normalize_files_prefix(self, prefix);
         let c = self.conn.lock();
-        queries::files_under(&c, prefix)
+        queries::files_under(&c, &prefix)
     }
 
     pub fn file_by_path(&self, path: &str) -> Result<Option<FileRow>> {
@@ -162,6 +172,51 @@ impl Db {
 
 pub(crate) fn db_err(e: rusqlite::Error) -> Error {
     Error::Db(e.to_string())
+}
+
+fn normalize_files_prefix(db: &Db, prefix: &str) -> String {
+    if prefix.is_empty() {
+        return String::new();
+    }
+
+    let path = Utf8Path::new(prefix);
+    let resolved = if path.is_absolute() {
+        path.to_path_buf()
+    } else if let Some(root) = db.workspace_root() {
+        root.join(path)
+    } else {
+        return prefix.to_string();
+    };
+
+    let normalized = lexical_normalize(&resolved);
+    normalized
+        .canonicalize_utf8()
+        .unwrap_or(normalized)
+        .into_string()
+}
+
+fn lexical_normalize(path: &Utf8Path) -> Utf8PathBuf {
+    use camino::Utf8Component;
+
+    let mut out = Utf8PathBuf::new();
+    for component in path.components() {
+        match component {
+            Utf8Component::Prefix(prefix) => {
+                out = Utf8PathBuf::from(prefix.as_str());
+            }
+            Utf8Component::RootDir => {
+                out.push("/");
+            }
+            Utf8Component::CurDir => {}
+            Utf8Component::ParentDir => {
+                out.pop();
+            }
+            Utf8Component::Normal(segment) => {
+                out.push(segment);
+            }
+        }
+    }
+    out
 }
 
 pub(crate) fn kind_str(k: NodeKind) -> &'static str {

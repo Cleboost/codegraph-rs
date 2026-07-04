@@ -189,9 +189,7 @@ fn normalize_files_prefix(db: &Db, prefix: &str) -> String {
     };
 
     let normalized = lexical_normalize(&resolved);
-    let canonical = normalized
-        .canonicalize_utf8()
-        .unwrap_or(normalized);
+    let canonical = normalized.canonicalize_utf8().unwrap_or(normalized);
     forward_slashes(&canonical)
 }
 

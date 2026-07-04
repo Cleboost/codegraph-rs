@@ -187,3 +187,30 @@ fn files_under_resolves_relative_prefix_against_workspace_root() {
     assert_eq!(db.files_under("lib").unwrap().len(), 1);
     assert_eq!(db.files_under("").unwrap().len(), 2);
 }
+
+#[test]
+fn files_under_matches_backslash_stored_paths() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+    let db_path = root.join(".codegraph").join("db.sqlite");
+    let db = Db::open(&db_path).unwrap();
+
+    let stored = format!("{}\\src\\foo.ts", root);
+    db.upsert_file(&FileRow {
+        id: None,
+        path: stored.clone().into(),
+        language: "typescript".into(),
+        sha256: "deadbeef".into(),
+        size: 100,
+        mtime: 0,
+        indexed_at: 0,
+    })
+    .unwrap();
+
+    assert_eq!(db.files_under("src").unwrap().len(), 1);
+    assert_eq!(db.files_under("./src/").unwrap().len(), 1);
+    assert_eq!(
+        db.files_under("src/foo.ts").unwrap()[0].path.as_str(),
+        stored
+    );
+}

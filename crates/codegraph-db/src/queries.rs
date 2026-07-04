@@ -79,7 +79,7 @@ pub(crate) fn files_under(c: &Connection, prefix: &str) -> Result<Vec<FileRow>> 
     let mut s = c
         .prepare_cached(
             "SELECT id, path, language, sha256, size, mtime, indexed_at
-             FROM files WHERE path LIKE ?1 ORDER BY path",
+             FROM files WHERE REPLACE(path, '\\', '/') LIKE ?1 ORDER BY path",
         )
         .map_err(db_err)?;
     let pat = format!("{}%", prefix);

@@ -185,14 +185,18 @@ fn normalize_files_prefix(db: &Db, prefix: &str) -> String {
     } else if let Some(root) = db.workspace_root() {
         root.join(path)
     } else {
-        return prefix.to_string();
+        return forward_slashes(prefix);
     };
 
     let normalized = lexical_normalize(&resolved);
-    normalized
+    let canonical = normalized
         .canonicalize_utf8()
-        .unwrap_or(normalized)
-        .into_string()
+        .unwrap_or(normalized);
+    forward_slashes(&canonical)
+}
+
+fn forward_slashes(path: impl AsRef<str>) -> String {
+    path.as_ref().replace('\\', "/")
 }
 
 fn lexical_normalize(path: &Utf8Path) -> Utf8PathBuf {

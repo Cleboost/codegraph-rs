@@ -91,6 +91,7 @@ fn walk(node: &Node, ctx: &mut Ctx) {
 fn push_named(ctx: &mut Ctx, node: &Node, kind: NodeKind) -> Option<usize> {
     let name_node = node
         .child_by_field_name("name")
+        .or_else(|| name_from_declarator(node))
         .or_else(|| first_identifier(node))?;
     let name = name_node.utf8_text(ctx.src).ok()?.to_string();
     if name.is_empty() {
@@ -116,6 +117,66 @@ fn push_named(ctx: &mut Ctx, node: &Node, kind: NodeKind) -> Option<usize> {
         language: ctx.spec.language_name.into(),
     });
     Some(ctx.result.nodes.len() - 1)
+}
+
+/// Walk a C/C++ declarator chain to the function or variable identifier.
+fn name_from_declarator<'a>(n: &Node<'a>) -> Option<Node<'a>> {
+    let declarator = n.child_by_field_name("declarator")?;
+    declarator_name(&declarator)
+}
+
+fn declarator_name<'a>(n: &Node<'a>) -> Option<Node<'a>> {
+    match n.kind() {
+        "identifier" | "field_identifier" | "destructor_name" | "operator_name" => Some(*n),
+        "type_identifier" if is_conversion_declarator(n) => Some(*n),
+        "function_declarator"
+        | "pointer_declarator"
+        | "reference_declarator"
+        | "array_declarator"
+        | "parenthesized_declarator"
+        | "abstract_function_declarator"
+        | "variadic_declarator" => declarator_child(n).and_then(|d| declarator_name(&d)),
+        "qualified_identifier" => n.child_by_field_name("name"),
+        _ => None,
+    }
+}
+
+fn declarator_child<'a>(n: &Node<'a>) -> Option<Node<'a>> {
+    if let Some(d) = n.child_by_field_name("declarator") {
+        return Some(d);
+    }
+    let mut c = n.walk();
+    for ch in n.children(&mut c) {
+        if is_declarator_kind(ch.kind()) {
+            return Some(ch);
+        }
+    }
+    None
+}
+
+fn is_declarator_kind(kind: &str) -> bool {
+    matches!(
+        kind,
+        "function_declarator"
+            | "pointer_declarator"
+            | "reference_declarator"
+            | "array_declarator"
+            | "parenthesized_declarator"
+            | "abstract_function_declarator"
+            | "variadic_declarator"
+            | "identifier"
+            | "field_identifier"
+            | "destructor_name"
+            | "operator_name"
+            | "qualified_identifier"
+            | "operator_cast"
+    )
+}
+
+fn is_conversion_declarator(n: &Node) -> bool {
+    n.parent()
+        .map(|p| p.kind() == "operator_cast")
+        .unwrap_or(false)
 }
 
 fn first_identifier<'a>(n: &Node<'a>) -> Option<Node<'a>> {
@@ -225,4 +286,59 @@ macro_rules! lang_extractor {
             }
         }
     };
+}
+
+#[cfg(all(test, feature = "lang-cpp"))]
+mod tests {
+    use super::*;
+    use tree_sitter::{Node, Parser};
+
+    fn find_kind<'a>(node: &Node<'a>, kind: &str) -> Option<Node<'a>> {
+        if node.kind() == kind {
+            return Some(*node);
+        }
+        let mut c = node.walk();
+        for ch in node.children(&mut c) {
+            if let Some(found) = find_kind(&ch, kind) {
+                return Some(found);
+            }
+        }
+        None
+    }
+
+    #[test]
+    fn name_from_declarator_finds_void_function() {
+        let src = "void alpha_void_plain() {}";
+        let mut p = Parser::new();
+        p.set_language(&tree_sitter_cpp::LANGUAGE.into()).unwrap();
+        let tree = p.parse(src, None).unwrap();
+        let fd = find_kind(&tree.root_node(), "function_definition").unwrap();
+        let name = name_from_declarator(&fd).unwrap();
+        assert_eq!(name.utf8_text(src.as_bytes()).unwrap(), "alpha_void_plain");
+    }
+
+    #[test]
+    fn name_from_declarator_finds_reference_return_function() {
+        let src = "const int &foxtrot_const_ref_plain(const int &x) { return x; }";
+        let mut p = Parser::new();
+        p.set_language(&tree_sitter_cpp::LANGUAGE.into()).unwrap();
+        let tree = p.parse(src, None).unwrap();
+        let fd = find_kind(&tree.root_node(), "function_definition").unwrap();
+        let name = name_from_declarator(&fd).unwrap();
+        assert_eq!(
+            name.utf8_text(src.as_bytes()).unwrap(),
+            "foxtrot_const_ref_plain"
+        );
+    }
+
+    #[test]
+    fn run_extracts_void_function() {
+        use crate::languages::cpp::SPEC;
+        let result = run(&SPEC, "void alpha_void_plain() {}").unwrap();
+        assert!(
+            result.nodes.iter().any(|n| n.name == "alpha_void_plain"),
+            "nodes: {:?}",
+            result.nodes.iter().map(|n| &n.name).collect::<Vec<_>>()
+        );
+    }
 }

@@ -146,12 +146,8 @@ fn declarator_child<'a>(n: &Node<'a>) -> Option<Node<'a>> {
         return Some(d);
     }
     let mut c = n.walk();
-    for ch in n.children(&mut c) {
-        if is_declarator_kind(ch.kind()) {
-            return Some(ch);
-        }
-    }
-    None
+    let declarator = n.children(&mut c).find(|&ch| is_declarator_kind(ch.kind()));
+    declarator
 }
 
 fn is_declarator_kind(kind: &str) -> bool {

@@ -1,7 +1,7 @@
 //! Regression tests for C++ free function extraction (issue #8).
 
-use codegraph_extract::Extractor;
 use codegraph_extract::languages::cpp::CppExtractor;
+use codegraph_extract::Extractor;
 
 fn extract_names(source: &str) -> Vec<String> {
     let result = CppExtractor::new().extract(source).unwrap();

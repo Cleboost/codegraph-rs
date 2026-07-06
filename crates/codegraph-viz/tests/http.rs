@@ -1,6 +1,6 @@
 use axum::Router;
 use camino::Utf8PathBuf;
-use codegraph_core::{NodeKind};
+use codegraph_core::NodeKind;
 use codegraph_db::{Db, FileRow, NodeDraft};
 use codegraph_viz::api::{self, AppState};
 use codegraph_viz::{BootConfig, VizConfig};

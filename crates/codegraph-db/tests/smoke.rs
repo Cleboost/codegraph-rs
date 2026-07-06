@@ -222,27 +222,37 @@ fn nodes_under_prefix_and_edges_between() {
     let db_path = root.join(".codegraph").join("db.sqlite");
     let db = Db::open(&db_path).unwrap();
 
-    let fid_a = db.upsert_file(&FileRow {
-        id: None,
-        path: root.join("src/a.ts"),
-        language: "typescript".into(),
-        sha256: "a".into(),
-        size: 1,
-        mtime: 0,
-        indexed_at: 0,
-    }).unwrap();
-    let fid_b = db.upsert_file(&FileRow {
-        id: None,
-        path: root.join("lib/b.ts"),
-        language: "typescript".into(),
-        sha256: "b".into(),
-        size: 1,
-        mtime: 0,
-        indexed_at: 0,
-    }).unwrap();
+    let fid_a = db
+        .upsert_file(&FileRow {
+            id: None,
+            path: root.join("src/a.ts"),
+            language: "typescript".into(),
+            sha256: "a".into(),
+            size: 1,
+            mtime: 0,
+            indexed_at: 0,
+        })
+        .unwrap();
+    let fid_b = db
+        .upsert_file(&FileRow {
+            id: None,
+            path: root.join("lib/b.ts"),
+            language: "typescript".into(),
+            sha256: "b".into(),
+            size: 1,
+            mtime: 0,
+            indexed_at: 0,
+        })
+        .unwrap();
 
     let ids_a = db
-        .insert_nodes(fid_a, &[mk_node("foo", NodeKind::Function), mk_node("bar", NodeKind::Function)])
+        .insert_nodes(
+            fid_a,
+            &[
+                mk_node("foo", NodeKind::Function),
+                mk_node("bar", NodeKind::Function),
+            ],
+        )
         .unwrap();
     let ids_b = db
         .insert_nodes(fid_b, &[mk_node("baz", NodeKind::Function)])

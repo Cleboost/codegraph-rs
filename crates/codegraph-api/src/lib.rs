@@ -4,7 +4,7 @@ use codegraph_context::{build, ContextRequest};
 use codegraph_core::{Node, NodeId, Result};
 use codegraph_db::{Db, FileRow};
 use codegraph_graph::{
-    ImpactReport, ReferencesReport, SubgraphRequest, SubgraphResponse, TraverseHits, Traversal,
+    ImpactReport, ReferencesReport, SubgraphRequest, SubgraphResponse, Traversal, TraverseHits,
 };
 
 pub struct GraphApi<'a> {

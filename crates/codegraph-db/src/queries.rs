@@ -264,11 +264,7 @@ fn edges_any(c: &Connection, id: NodeId, kinds: &[EdgeKind], from: bool) -> Resu
     Ok(out)
 }
 
-pub(crate) fn nodes_by_file_ids(
-    c: &Connection,
-    file_ids: &[i64],
-    limit: u32,
-) -> Result<Vec<Node>> {
+pub(crate) fn nodes_by_file_ids(c: &Connection, file_ids: &[i64], limit: u32) -> Result<Vec<Node>> {
     if file_ids.is_empty() {
         return Ok(Vec::new());
     }

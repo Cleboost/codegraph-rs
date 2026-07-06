@@ -119,9 +119,7 @@ impl<'a> Traversal<'a> {
             let nodes = self.db.nodes_by_file_ids(&file_ids, node_limit)?;
             let mut truncated = nodes.len() as u32 >= node_limit;
             let node_ids: Vec<NodeId> = nodes.iter().map(|n| n.id).collect();
-            let edges = self
-                .db
-                .edges_between(&node_ids, &kinds, edge_limit)?;
+            let edges = self.db.edges_between(&node_ids, &kinds, edge_limit)?;
             if edges.len() as u32 >= edge_limit {
                 truncated = true;
             }

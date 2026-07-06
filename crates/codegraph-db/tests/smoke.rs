@@ -214,3 +214,71 @@ fn files_under_matches_backslash_stored_paths() {
         stored
     );
 }
+
+#[test]
+fn nodes_under_prefix_and_edges_between() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = Utf8PathBuf::from_path_buf(dir.path().to_path_buf()).unwrap();
+    let db_path = root.join(".codegraph").join("db.sqlite");
+    let db = Db::open(&db_path).unwrap();
+
+    let fid_a = db.upsert_file(&FileRow {
+        id: None,
+        path: root.join("src/a.ts"),
+        language: "typescript".into(),
+        sha256: "a".into(),
+        size: 1,
+        mtime: 0,
+        indexed_at: 0,
+    }).unwrap();
+    let fid_b = db.upsert_file(&FileRow {
+        id: None,
+        path: root.join("lib/b.ts"),
+        language: "typescript".into(),
+        sha256: "b".into(),
+        size: 1,
+        mtime: 0,
+        indexed_at: 0,
+    }).unwrap();
+
+    let ids_a = db
+        .insert_nodes(fid_a, &[mk_node("foo", NodeKind::Function), mk_node("bar", NodeKind::Function)])
+        .unwrap();
+    let ids_b = db
+        .insert_nodes(fid_b, &[mk_node("baz", NodeKind::Function)])
+        .unwrap();
+
+    db.insert_edges(&[
+        EdgeDraft {
+            from_id: ids_a[0],
+            to_id: ids_a[1],
+            kind: EdgeKind::Calls,
+            file_id: Some(fid_a),
+            line: Some(1),
+            source: None,
+        },
+        EdgeDraft {
+            from_id: ids_a[0],
+            to_id: ids_b[0],
+            kind: EdgeKind::Calls,
+            file_id: Some(fid_a),
+            line: Some(2),
+            source: None,
+        },
+    ])
+    .unwrap();
+
+    let under_src = db.nodes_under_prefix("src", 100).unwrap();
+    assert_eq!(under_src.len(), 2);
+
+    let by_files = db.nodes_by_file_ids(&[fid_a], 100).unwrap();
+    assert_eq!(by_files.len(), 2);
+
+    let node_ids: Vec<i64> = under_src.iter().map(|n| n.id).collect();
+    let internal = db
+        .edges_between(&node_ids, &[EdgeKind::Calls], 100)
+        .unwrap();
+    assert_eq!(internal.len(), 1);
+    assert_eq!(internal[0].from, ids_a[0]);
+    assert_eq!(internal[0].to, ids_a[1]);
+}

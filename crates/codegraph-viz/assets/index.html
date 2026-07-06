@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CodeGraph Visualize</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="logo">◈</span>
+      <div>
+        <h1>CodeGraph</h1>
+        <p class="tagline">knowledge graph explorer</p>
+      </div>
+    </div>
+
+    <nav id="view-tabs" class="seg-control">
+      <button data-view="table" class="active" title="Table view">☰ Table</button>
+      <button data-view="graph2d" title="2D force graph">◎ 2D</button>
+      <button data-view="graph3d" title="3D force graph">✦ 3D</button>
+    </nav>
+
+    <div id="search-bar">
+      <span class="search-icon">⌕</span>
+      <input id="search-input" type="search" placeholder="Search symbols…" autocomplete="off" />
+    </div>
+
+    <div id="controls">
+      <label class="depth-wrap" title="Traversal depth">
+        <span>Depth</span>
+        <input id="depth-input" type="number" min="1" max="5" value="2" />
+      </label>
+      <button id="reload-btn" class="btn-primary">↻ Load</button>
+      <span id="graph-count" class="chip hidden"></span>
+      <span id="truncated-badge" class="chip warn hidden">truncated</span>
+    </div>
+  </header>
+
+  <main>
+    <section id="panel-left">
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <span>Loading graph…</span>
+      </div>
+
+      <div id="search-results" class="list-panel hidden"></div>
+
+      <div id="graph-hud" class="graph-hud hidden">
+        <span id="hud-stats" class="hud-stats"></span>
+        <div class="hud-actions">
+          <button id="btn-fit" class="btn-ghost" title="Fit to view">⊡ Fit</button>
+          <button id="btn-pause" class="btn-ghost" title="Pause simulation">⏸ Pause</button>
+          <button id="btn-rotate" class="btn-ghost hidden" title="Auto-rotate camera">↻ Spin</button>
+        </div>
+      </div>
+
+      <div id="table-view" class="view active"></div>
+      <div id="graph2d-view" class="view graph-canvas"></div>
+      <div id="graph3d-view" class="view graph-canvas"></div>
+    </section>
+
+    <aside id="detail-panel">
+      <div class="panel-header">
+        <h2>Inspector</h2>
+      </div>
+      <div id="detail-content" class="detail-card">
+        <p class="muted empty-hint">Click a node to inspect</p>
+      </div>
+      <div id="detail-actions" class="action-grid hidden">
+        <button id="btn-callers" class="btn-action">↑ Callers</button>
+        <button id="btn-callees" class="btn-action">↓ Callees</button>
+        <button id="btn-expand" class="btn-action">⊕ Expand</button>
+        <button id="btn-focus" class="btn-action">◎ Focus</button>
+      </div>
+      <div id="legend" class="legend"></div>
+      <div id="status-bar" class="status-bar"></div>
+    </aside>
+  </main>
+
+  <script src="/vendor/force-graph.min.js"></script>
+  <script src="/vendor/3d-force-graph.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

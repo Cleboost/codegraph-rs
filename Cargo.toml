@@ -7,7 +7,9 @@ members = [
     "crates/codegraph-resolve",
     "crates/codegraph-graph",
     "crates/codegraph-context",
+    "crates/codegraph-api",
     "crates/codegraph-mcp",
+    "crates/codegraph-viz",
     "crates/codegraph-installer",
     "crates/codegraph",
 ]
@@ -74,6 +76,12 @@ jsonc-parser = "0.26"
 dialoguer = "0.11"
 console = "0.15"
 which = "7"
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["compression-gzip"] }
+rust-embed = "8"
+open = "5"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 
 [profile.release]
 opt-level = 3

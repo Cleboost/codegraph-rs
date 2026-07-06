@@ -19,6 +19,7 @@ codegraph-graph     = { path = "../codegraph-graph" }
 codegraph-context   = { path = "../codegraph-context" }
 codegraph-mcp       = { path = "../codegraph-mcp" }
 codegraph-installer = { path = "../codegraph-installer" }
+codegraph-viz       = { path = "../codegraph-viz", optional = true }
 dirs = { workspace = true }
 clap = { workspace = true }
 tokio = { workspace = true }
@@ -31,3 +32,7 @@ anyhow = { workspace = true }
 camino = { workspace = true }
 dialoguer = { workspace = true }
 console = "0.15"
+
+[features]
+default = ["visualize"]
+visualize = ["dep:codegraph-viz"]

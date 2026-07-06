@@ -1,22 +1,19 @@
 [package]
-name = "codegraph-mcp"
+name = "codegraph-api"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
 [dependencies]
-codegraph-api    = { path = "../codegraph-api" }
 codegraph-core    = { path = "../codegraph-core" }
 codegraph-db      = { path = "../codegraph-db" }
 codegraph-graph   = { path = "../codegraph-graph" }
 codegraph-context = { path = "../codegraph-context" }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { workspace = true }
-tracing = { workspace = true }
 anyhow = { workspace = true }
-camino = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
+camino = { workspace = true }

@@ -33,3 +33,18 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace --no-fail-fast
+
+  slim:
+    name: slim build (no visualize)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy -p codegraph --no-default-features -- -D warnings
+      - run: cargo build -p codegraph --no-default-features
+      - run: |
+          cargo run -p codegraph --no-default-features -- --help | tee help.txt
+          ! grep -q visualize help.txt

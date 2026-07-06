@@ -162,6 +162,27 @@ impl Db {
         queries::stats(&c)
     }
 
+    pub fn nodes_by_file_ids(&self, file_ids: &[i64], limit: u32) -> Result<Vec<Node>> {
+        let c = self.conn.lock();
+        queries::nodes_by_file_ids(&c, file_ids, limit)
+    }
+
+    pub fn nodes_under_prefix(&self, prefix: &str, limit: u32) -> Result<Vec<Node>> {
+        let prefix = normalize_files_prefix(self, prefix);
+        let c = self.conn.lock();
+        queries::nodes_under_prefix(&c, &prefix, limit)
+    }
+
+    pub fn edges_between(
+        &self,
+        node_ids: &[NodeId],
+        kinds: &[EdgeKind],
+        limit: u32,
+    ) -> Result<Vec<Edge>> {
+        let c = self.conn.lock();
+        queries::edges_between(&c, node_ids, kinds, limit)
+    }
+
     pub fn purge(&self) -> Result<()> {
         let c = self.conn.lock();
         c.execute_batch("DELETE FROM edges; DELETE FROM nodes; DELETE FROM files;")

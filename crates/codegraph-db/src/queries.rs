@@ -264,6 +264,108 @@ fn edges_any(c: &Connection, id: NodeId, kinds: &[EdgeKind], from: bool) -> Resu
     Ok(out)
 }
 
+pub(crate) fn nodes_by_file_ids(
+    c: &Connection,
+    file_ids: &[i64],
+    limit: u32,
+) -> Result<Vec<Node>> {
+    if file_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let placeholders = std::iter::repeat_n("?", file_ids.len())
+        .collect::<Vec<_>>()
+        .join(",");
+    let sql = format!(
+        "SELECT n.id, n.kind, n.name, n.qualified_name, f.path, n.start_line, n.end_line,
+                n.signature, n.docstring, n.language
+         FROM nodes n JOIN files f ON f.id = n.file_id
+         WHERE n.file_id IN ({placeholders})
+         ORDER BY n.id
+         LIMIT ?"
+    );
+    let mut s = c.prepare(&sql).map_err(db_err)?;
+    let mut p: Vec<Box<dyn rusqlite::ToSql>> = Vec::with_capacity(file_ids.len() + 1);
+    for id in file_ids {
+        p.push(Box::new(*id));
+    }
+    p.push(Box::new(limit as i64));
+    let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|b| b.as_ref()).collect();
+    let it = s.query_map(refs.as_slice(), row_to_node).map_err(db_err)?;
+    let mut out = Vec::new();
+    for r in it {
+        out.push(r.map_err(db_err)?);
+    }
+    Ok(out)
+}
+
+pub(crate) fn nodes_under_prefix(c: &Connection, prefix: &str, limit: u32) -> Result<Vec<Node>> {
+    let sql = "SELECT n.id, n.kind, n.name, n.qualified_name, f.path, n.start_line, n.end_line,
+                      n.signature, n.docstring, n.language
+               FROM nodes n JOIN files f ON f.id = n.file_id
+               WHERE REPLACE(f.path, '\\', '/') LIKE ?1
+               ORDER BY n.id
+               LIMIT ?2";
+    let mut s = c.prepare_cached(sql).map_err(db_err)?;
+    let pat = format!("{}%", prefix);
+    let it = s
+        .query_map(params![pat, limit as i64], row_to_node)
+        .map_err(db_err)?;
+    let mut out = Vec::new();
+    for r in it {
+        out.push(r.map_err(db_err)?);
+    }
+    Ok(out)
+}
+
+pub(crate) fn edges_between(
+    c: &Connection,
+    node_ids: &[NodeId],
+    kinds: &[EdgeKind],
+    limit: u32,
+) -> Result<Vec<Edge>> {
+    if node_ids.is_empty() {
+        return Ok(Vec::new());
+    }
+    let id_placeholders = std::iter::repeat_n("?", node_ids.len())
+        .collect::<Vec<_>>()
+        .join(",");
+    let kind_clause = if kinds.is_empty() {
+        String::new()
+    } else {
+        let kind_ph = std::iter::repeat_n("?", kinds.len())
+            .collect::<Vec<_>>()
+            .join(",");
+        format!(" AND e.kind IN ({kind_ph})")
+    };
+    let sql = format!(
+        "SELECT e.from_id, e.to_id, e.kind, f.path, e.line
+         FROM edges e LEFT JOIN files f ON f.id = e.file_id
+         WHERE e.from_id IN ({id_placeholders})
+           AND e.to_id IN ({id_placeholders})
+           AND e.kind != 'contains'{kind_clause}
+         LIMIT ?"
+    );
+    let mut s = c.prepare(&sql).map_err(db_err)?;
+    let mut p: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+    for id in node_ids {
+        p.push(Box::new(*id));
+    }
+    for id in node_ids {
+        p.push(Box::new(*id));
+    }
+    for k in kinds {
+        p.push(Box::new(ekind_str(*k)));
+    }
+    p.push(Box::new(limit as i64));
+    let refs: Vec<&dyn rusqlite::ToSql> = p.iter().map(|b| b.as_ref()).collect();
+    let it = s.query_map(refs.as_slice(), row_to_edge).map_err(db_err)?;
+    let mut out = Vec::new();
+    for r in it {
+        out.push(r.map_err(db_err)?);
+    }
+    Ok(out)
+}
+
 pub(crate) fn stats(c: &Connection) -> Result<DbStats> {
     let files: i64 = c
         .query_row("SELECT COUNT(*) FROM files", [], |r| r.get(0))

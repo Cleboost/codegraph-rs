@@ -122,8 +122,12 @@ keeps the index fresh while you edit.
 | `codegraph files [path]` | List indexed files under a prefix |
 | `codegraph context <target>` | Build markdown context for a symbol |
 | `codegraph serve --mcp` | Run as MCP server over stdio (used by agents) |
+| `codegraph visualize` | Local web UI (2D/3D graph + table) at `http://127.0.0.1:7421` |
 
 Global flag `--path <dir>` overrides the workspace root.
+
+`visualize` is enabled by default. For a slimmer binary without the embedded
+web UI: `cargo build -p codegraph --no-default-features`.
 
 ## Supported languages
 

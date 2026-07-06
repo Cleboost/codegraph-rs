@@ -74,6 +74,22 @@ enum Cmd {
     },
     /// Configure agents (alias for the agent setup step in `init`).
     Install,
+    /// Launch local web UI to explore the knowledge graph.
+    #[cfg(feature = "visualize")]
+    Visualize {
+        #[arg(long, default_value_t = 7421)]
+        port: u16,
+        #[arg(long)]
+        open: bool,
+        #[arg(long)]
+        target: Option<String>,
+        #[arg(long)]
+        prefix: Option<String>,
+        #[arg(long, default_value_t = 2)]
+        depth: u32,
+        #[arg(long)]
+        no_browser: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -114,6 +130,15 @@ fn main() -> Result<()> {
         } => cmd_context(&root, &target, depth, source),
         Cmd::Serve { mcp } => cmd_serve(&root, mcp),
         Cmd::Install => cmd_agents(&root),
+        #[cfg(feature = "visualize")]
+        Cmd::Visualize {
+            port,
+            open,
+            target,
+            prefix,
+            depth,
+            no_browser,
+        } => cmd_visualize(&root, port, open, target, prefix, depth, no_browser),
     }
 }
 
@@ -186,6 +211,11 @@ fn cmd_default(root: &Utf8Path) -> Result<()> {
     eprintln!(
         "         • {}            Configure/install AI agent integrations",
         style("codegraph install").green()
+    );
+    #[cfg(feature = "visualize")]
+    eprintln!(
+        "         • {}   Explore the graph in your browser",
+        style("codegraph visualize").green()
     );
     eprintln!();
     Ok(())
@@ -442,5 +472,35 @@ fn cmd_serve(root: &Utf8Path, mcp: bool) -> Result<()> {
         watcher::spawn(root.to_path_buf(), db.clone());
         McpServer::new(db).run_stdio().await
     })?;
+    Ok(())
+}
+
+#[cfg(feature = "visualize")]
+fn cmd_visualize(
+    root: &Utf8Path,
+    port: u16,
+    open: bool,
+    target: Option<String>,
+    prefix: Option<String>,
+    depth: u32,
+    no_browser: bool,
+) -> Result<()> {
+    use codegraph_viz::{BootConfig, VizConfig};
+
+    ensure_initialized(root).context("init the index before visualize")?;
+    let db = Arc::new(Db::open_read_only(&db_path(root))?);
+    let config = VizConfig {
+        port,
+        open_browser: open && !no_browser,
+        boot: BootConfig {
+            target,
+            prefix,
+            depth,
+        },
+    };
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+    rt.block_on(codegraph_viz::run(db, config))?;
     Ok(())
 }

@@ -1,6 +1,6 @@
-use codegraph_context::{build, ContextRequest, Format};
+use codegraph_api::GraphApi;
+use codegraph_context::{ContextRequest, Format};
 use codegraph_db::Db;
-use codegraph_graph::{ReferencesReport, Traversal};
 use serde_json::{json, Value};
 
 pub fn tool_definitions() -> Vec<Value> {
@@ -80,20 +80,20 @@ fn tool(name: &str, desc: &str, schema: Value) -> Value {
 }
 
 pub fn dispatch(db: &Db, name: &str, args: Value) -> anyhow::Result<String> {
+    let api = GraphApi::new(db);
     match name {
         "codegraph_search" => {
             let q = arg_str(&args, "query")?;
             let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20) as u32;
-            let hits = db.search_nodes(q, limit)?;
-            Ok(serde_json::to_string_pretty(&hits)?)
+            Ok(serde_json::to_string_pretty(&api.search(q, limit)?)?)
         }
         "codegraph_node" => {
             if let Some(id) = args.get("id").and_then(|v| v.as_i64()) {
-                let n = db.node_by_id(id)?;
+                let n = api.node_by_id(id)?;
                 return Ok(serde_json::to_string_pretty(&n)?);
             }
             if let Some(name) = args.get("name").and_then(|v| v.as_str()) {
-                let n = db.nodes_by_name(name)?;
+                let n = api.nodes_by_name(name)?;
                 return Ok(serde_json::to_string_pretty(&n)?);
             }
             Err(anyhow::anyhow!("provide id or name"))
@@ -101,20 +101,17 @@ pub fn dispatch(db: &Db, name: &str, args: Value) -> anyhow::Result<String> {
         "codegraph_callers" => {
             let id = arg_i64(&args, "node")?;
             let depth = args.get("depth").and_then(|v| v.as_u64()).unwrap_or(1) as u32;
-            let t = Traversal::new(db);
-            Ok(serde_json::to_string_pretty(&t.callers(id, depth)?)?)
+            Ok(serde_json::to_string_pretty(&api.callers(id, depth)?)?)
         }
         "codegraph_callees" => {
             let id = arg_i64(&args, "node")?;
             let depth = args.get("depth").and_then(|v| v.as_u64()).unwrap_or(1) as u32;
-            let t = Traversal::new(db);
-            Ok(serde_json::to_string_pretty(&t.callees(id, depth)?)?)
+            Ok(serde_json::to_string_pretty(&api.callees(id, depth)?)?)
         }
         "codegraph_impact" => {
             let id = arg_i64(&args, "node")?;
             let depth = args.get("max_depth").and_then(|v| v.as_u64()).unwrap_or(3) as u32;
-            let t = Traversal::new(db);
-            Ok(serde_json::to_string_pretty(&t.impact_radius(id, depth)?)?)
+            Ok(serde_json::to_string_pretty(&api.impact(id, depth)?)?)
         }
         "codegraph_context" => {
             let req = ContextRequest {
@@ -127,19 +124,17 @@ pub fn dispatch(db: &Db, name: &str, args: Value) -> anyhow::Result<String> {
                 limit: args.get("limit").and_then(|v| v.as_u64()).unwrap_or(5) as u32,
                 format: Format::Markdown,
             };
-            Ok(build(db, &req)?)
+            Ok(api.context_markdown(&req)?)
         }
         "codegraph_references" => {
             let id = arg_i64(&args, "node")?;
-            let t = Traversal::new(db);
-            let report: ReferencesReport = t.references(id)?;
-            Ok(serde_json::to_string_pretty(&report)?)
+            Ok(serde_json::to_string_pretty(&api.references(id)?)?)
         }
         "codegraph_files" => {
             let prefix = args.get("path").and_then(|v| v.as_str()).unwrap_or("");
-            Ok(serde_json::to_string_pretty(&db.files_under(prefix)?)?)
+            Ok(serde_json::to_string_pretty(&api.files(prefix)?)?)
         }
-        "codegraph_status" => Ok(serde_json::to_string_pretty(&db.stats()?)?),
+        "codegraph_status" => Ok(serde_json::to_string_pretty(&api.stats()?)?),
         _ => Err(anyhow::anyhow!("unknown tool: {name}")),
     }
 }

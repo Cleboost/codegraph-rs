@@ -1,0 +1,27 @@
+[package]
+name = "codegraph-viz"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+codegraph-api  = { path = "../codegraph-api" }
+codegraph-core = { path = "../codegraph-core" }
+codegraph-db   = { path = "../codegraph-db" }
+codegraph-graph = { path = "../codegraph-graph" }
+axum = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+rust-embed = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+open = { workspace = true }
+
+[dev-dependencies]
+reqwest = { workspace = true, features = ["json"] }
+tempfile = "3"
+camino = { workspace = true }

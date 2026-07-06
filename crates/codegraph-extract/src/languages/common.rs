@@ -159,7 +159,10 @@ fn function_end_line(node: &Node) -> u32 {
 
 fn misparsed_function_end_line(decl: &Node) -> u32 {
     if let Some(tmpl) = decl.parent().filter(|p| p.kind() == "template_declaration") {
-        if let Some(body) = tmpl.next_sibling().filter(|s| s.kind() == "compound_statement") {
+        if let Some(body) = tmpl
+            .next_sibling()
+            .filter(|s| s.kind() == "compound_statement")
+        {
             return body.end_position().row as u32 + 1;
         }
     }

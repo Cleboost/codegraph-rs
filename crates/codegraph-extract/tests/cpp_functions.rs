@@ -39,10 +39,7 @@ fn cpp_out_of_class_ctor_with_specifiers_issue_9() {
             "ConstexprWidget",
             "constexpr ConstexprWidget<T>::ConstexprWidget(ConstexprWidget &&other)",
         ),
-        (
-            "~ConstexprWidget",
-            "ConstexprWidget<T>::~ConstexprWidget()",
-        ),
+        ("~ConstexprWidget", "ConstexprWidget<T>::~ConstexprWidget()"),
         (
             "NodiscardWidget",
             "[[nodiscard]] NodiscardWidget<T>::NodiscardWidget()",
@@ -55,10 +52,7 @@ fn cpp_out_of_class_ctor_with_specifiers_issue_9() {
             "NodiscardWidget",
             "[[nodiscard]] NodiscardWidget<T>::NodiscardWidget(NodiscardWidget &&other)",
         ),
-        (
-            "~NodiscardWidget",
-            "NodiscardWidget<T>::~NodiscardWidget()",
-        ),
+        ("~NodiscardWidget", "NodiscardWidget<T>::~NodiscardWidget()"),
         (
             "CustomWidget",
             "_CUSTOM_ATTRIBUTE CustomWidget<T>::CustomWidget()",
@@ -71,10 +65,7 @@ fn cpp_out_of_class_ctor_with_specifiers_issue_9() {
             "CustomWidget",
             "_CUSTOM_ATTRIBUTE CustomWidget<T>::CustomWidget(CustomWidget &&other)",
         ),
-        (
-            "~CustomWidget",
-            "CustomWidget<T>::~CustomWidget()",
-        ),
+        ("~CustomWidget", "CustomWidget<T>::~CustomWidget()"),
     ];
 
     for (name, sig) in expected {

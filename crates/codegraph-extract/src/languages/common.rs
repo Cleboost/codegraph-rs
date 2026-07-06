@@ -62,6 +62,8 @@ fn walk(node: &Node, ctx: &mut Ctx) {
 
     if let Some((_, nk)) = ctx.spec.decls.iter().find(|(s, _)| *s == k) {
         pushed = push_named(ctx, node, *nk);
+    } else if k == "declaration" && is_misparsed_out_of_class_function(node) {
+        pushed = push_misparsed_out_of_class_function(ctx, node);
     } else if ctx.spec.import_kinds.contains(&k) {
         emit_import(node, ctx);
     } else if ctx.spec.call_kind == Some(k) {
@@ -98,14 +100,8 @@ fn push_named(ctx: &mut Ctx, node: &Node, kind: NodeKind) -> Option<usize> {
         return None;
     }
     let start = node.start_position().row as u32 + 1;
-    let end = node.end_position().row as u32 + 1;
-    let body = node
-        .child_by_field_name("body")
-        .map(|b| b.start_byte())
-        .unwrap_or(node.end_byte());
-    let sig = std::str::from_utf8(&ctx.src[node.start_byte()..body.min(ctx.src.len())])
-        .ok()
-        .map(|s| s.trim().lines().next().unwrap_or("").to_string());
+    let end = function_end_line(node);
+    let sig = extract_signature(node, ctx.src);
     ctx.result.nodes.push(NodeDraft {
         kind,
         name,
@@ -117,6 +113,91 @@ fn push_named(ctx: &mut Ctx, node: &Node, kind: NodeKind) -> Option<usize> {
         language: ctx.spec.language_name.into(),
     });
     Some(ctx.result.nodes.len() - 1)
+}
+
+/// tree-sitter sometimes parses `MACRO\nClass<T>::Class(args)\n    : init {}` as a
+/// `declaration` (macro mistaken for return type) instead of `function_definition`.
+fn is_misparsed_out_of_class_function(node: &Node) -> bool {
+    if node.kind() != "declaration" {
+        return false;
+    }
+    find_function_declarator(node).is_some_and(|fd| {
+        fd.child_by_field_name("declarator")
+            .is_some_and(|d| d.kind() == "qualified_identifier")
+    })
+}
+
+fn push_misparsed_out_of_class_function(ctx: &mut Ctx, node: &Node) -> Option<usize> {
+    let fd = find_function_declarator(node)?;
+    let name_node = declarator_name(&fd.child_by_field_name("declarator")?)?;
+    let name = name_node.utf8_text(ctx.src).ok()?.to_string();
+    if name.is_empty() {
+        return None;
+    }
+    let start = node.start_position().row as u32 + 1;
+    let end = misparsed_function_end_line(node);
+    let sig = extract_signature(node, ctx.src);
+    ctx.result.nodes.push(NodeDraft {
+        kind: NodeKind::Function,
+        name,
+        qualified_name: None,
+        start_line: start,
+        end_line: end,
+        signature: sig,
+        docstring: None,
+        language: ctx.spec.language_name.into(),
+    });
+    Some(ctx.result.nodes.len() - 1)
+}
+
+fn function_end_line(node: &Node) -> u32 {
+    if let Some(body) = node.child_by_field_name("body") {
+        return body.end_position().row as u32 + 1;
+    }
+    node.end_position().row as u32 + 1
+}
+
+fn misparsed_function_end_line(decl: &Node) -> u32 {
+    if let Some(tmpl) = decl.parent().filter(|p| p.kind() == "template_declaration") {
+        if let Some(body) = tmpl.next_sibling().filter(|s| s.kind() == "compound_statement") {
+            return body.end_position().row as u32 + 1;
+        }
+    }
+    decl.end_position().row as u32 + 1
+}
+
+fn extract_signature(node: &Node, src: &[u8]) -> Option<String> {
+    let end = find_function_declarator(node)
+        .map(|fd| fd.end_byte())
+        .or_else(|| node.child_by_field_name("body").map(|b| b.start_byte()))
+        .unwrap_or(node.end_byte());
+    let start = node.start_byte();
+    if end <= start {
+        return None;
+    }
+    normalize_signature(std::str::from_utf8(&src[start..end]).ok()?)
+}
+
+fn normalize_signature(text: &str) -> Option<String> {
+    let sig = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if sig.is_empty() {
+        None
+    } else {
+        Some(sig)
+    }
+}
+
+fn find_function_declarator<'a>(n: &Node<'a>) -> Option<Node<'a>> {
+    if n.kind() == "function_declarator" {
+        return Some(*n);
+    }
+    let mut c = n.walk();
+    for ch in n.children(&mut c) {
+        if let Some(found) = find_function_declarator(&ch) {
+            return Some(found);
+        }
+    }
+    None
 }
 
 /// Walk a C/C++ declarator chain to the function or variable identifier.
@@ -324,6 +405,43 @@ mod tests {
         assert_eq!(
             name.utf8_text(src.as_bytes()).unwrap(),
             "foxtrot_const_ref_plain"
+        );
+    }
+
+    #[test]
+    fn extract_signature_spans_multiline_specifier() {
+        let src = r#"
+template <typename T>
+constexpr
+ConstexprWidget<T>::ConstexprWidget(const ConstexprWidget &other)
+    : value(other.value) {}
+"#;
+        let mut p = Parser::new();
+        p.set_language(&tree_sitter_cpp::LANGUAGE.into()).unwrap();
+        let tree = p.parse(src, None).unwrap();
+        let fd = find_kind(&tree.root_node(), "function_definition").unwrap();
+        let sig = extract_signature(&fd, src.as_bytes()).unwrap();
+        assert_eq!(
+            sig,
+            "constexpr ConstexprWidget<T>::ConstexprWidget(const ConstexprWidget &other)"
+        );
+    }
+
+    #[test]
+    fn misparsed_custom_attr_copy_ctor_is_recovered() {
+        use crate::languages::cpp::SPEC;
+        let src = r#"
+template <typename T>
+_CUSTOM_ATTRIBUTE
+CustomWidget<T>::CustomWidget(const CustomWidget &other)
+    : value(other.value) {}
+"#;
+        let result = run(&SPEC, src).unwrap();
+        assert_eq!(result.nodes.len(), 1);
+        assert_eq!(result.nodes[0].name, "CustomWidget");
+        assert_eq!(
+            result.nodes[0].signature.as_deref(),
+            Some("_CUSTOM_ATTRIBUTE CustomWidget<T>::CustomWidget(const CustomWidget &other)")
         );
     }
 

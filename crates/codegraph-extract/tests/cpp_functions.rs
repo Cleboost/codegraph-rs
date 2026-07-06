@@ -14,6 +14,78 @@ fn extract_names(source: &str) -> Vec<String> {
 }
 
 #[test]
+fn cpp_out_of_class_ctor_with_specifiers_issue_9() {
+    let source = include_str!("fixtures/issue9_attr_specifiers.h");
+    let result = CppExtractor::new().extract(source).unwrap();
+    let fns: Vec<_> = result
+        .nodes
+        .iter()
+        .filter(|n| n.kind == codegraph_core::NodeKind::Function)
+        .map(|n| (n.name.clone(), n.signature.clone().unwrap_or_default()))
+        .collect();
+
+    assert_eq!(fns.len(), 12, "expected 12 out-of-class definitions");
+
+    let expected = [
+        (
+            "ConstexprWidget",
+            "constexpr ConstexprWidget<T>::ConstexprWidget()",
+        ),
+        (
+            "ConstexprWidget",
+            "constexpr ConstexprWidget<T>::ConstexprWidget(const ConstexprWidget &other)",
+        ),
+        (
+            "ConstexprWidget",
+            "constexpr ConstexprWidget<T>::ConstexprWidget(ConstexprWidget &&other)",
+        ),
+        (
+            "~ConstexprWidget",
+            "ConstexprWidget<T>::~ConstexprWidget()",
+        ),
+        (
+            "NodiscardWidget",
+            "[[nodiscard]] NodiscardWidget<T>::NodiscardWidget()",
+        ),
+        (
+            "NodiscardWidget",
+            "[[nodiscard]] NodiscardWidget<T>::NodiscardWidget(const NodiscardWidget &other)",
+        ),
+        (
+            "NodiscardWidget",
+            "[[nodiscard]] NodiscardWidget<T>::NodiscardWidget(NodiscardWidget &&other)",
+        ),
+        (
+            "~NodiscardWidget",
+            "NodiscardWidget<T>::~NodiscardWidget()",
+        ),
+        (
+            "CustomWidget",
+            "_CUSTOM_ATTRIBUTE CustomWidget<T>::CustomWidget()",
+        ),
+        (
+            "CustomWidget",
+            "_CUSTOM_ATTRIBUTE CustomWidget<T>::CustomWidget(const CustomWidget &other)",
+        ),
+        (
+            "CustomWidget",
+            "_CUSTOM_ATTRIBUTE CustomWidget<T>::CustomWidget(CustomWidget &&other)",
+        ),
+        (
+            "~CustomWidget",
+            "CustomWidget<T>::~CustomWidget()",
+        ),
+    ];
+
+    for (name, sig) in expected {
+        assert!(
+            fns.iter().any(|(n, s)| n == name && s == sig),
+            "missing {name:?} with signature {sig:?}, got {fns:?}"
+        );
+    }
+}
+
+#[test]
 fn cpp_free_functions_use_function_name_not_return_type() {
     let source = r#"
 namespace repro_ns {

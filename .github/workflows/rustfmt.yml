@@ -1,0 +1,23 @@
+name: rustfmt
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  rustfmt:
+    name: auto rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all
+      - uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "style: apply rustfmt"
